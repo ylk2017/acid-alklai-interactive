@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>F.2 Science | Acid & Alkali Unknown Solutions A–E Interactive Lab</title>
+  <title>F.2 Science | Acid & Alkali Unknown Solutions A–E Interactive Lab (v2)</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
@@ -12,9 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
-    :root {
-      --touch-min: 44px;
-    }
+    :root { --touch-min: 44px; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
       background-color: #f1f5f9;
@@ -27,9 +25,7 @@
       min-height: 44px;
       transition: all 0.15s ease;
     }
-    .touch-btn:active {
-      transform: scale(0.97);
-    }
+    .touch-btn:active { transform: scale(0.97); }
     .litmus-strip {
       width: 14px;
       height: 36px;
@@ -56,7 +52,6 @@
       color: #334155;
       border: 1px solid #cbd5e1;
     }
-    /* Custom scrollbar for iPad cleanliness */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
   </style>
@@ -64,11 +59,10 @@
 <body class="text-slate-800 min-h-screen flex flex-col">
 
   <!-- =========================================================
-       TOP HEADER (Emerald -> Indigo Gradient, iPad Optimized)
+       TOP HEADER
        ========================================================= -->
   <header class="header-gradient text-white shadow-lg sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-      <!-- Brand / Lesson Title -->
       <div class="flex items-center gap-3">
         <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-2xl shadow-inner">
           🧪
@@ -88,7 +82,6 @@
         </div>
       </div>
 
-      <!-- Right Controls: Identity + Sync Status + Teacher Entry -->
       <div class="flex flex-wrap items-center gap-2">
         <!-- Student Identity Pill -->
         <div id="studentIdentityBar" class="flex items-center gap-2 bg-slate-900/35 border border-white/20 rounded-xl px-3 py-1.5 text-xs md:text-sm">
@@ -99,13 +92,14 @@
           </button>
         </div>
 
-        <!-- Sync Status Pill -->
-        <div id="syncStatusPill" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/25 border border-amber-300/40 text-amber-100 text-xs font-semibold">
+        <!-- Live Connection Status Pill (Verified via actual RTDB handshake!) -->
+        <button type="button" onclick="onSyncPillClick()" id="syncStatusPill"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/25 border border-amber-300/40 text-amber-100 text-xs font-semibold cursor-pointer">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
-          <span id="syncText">Demo Mode / 離線預覽</span>
-        </div>
+          <span id="syncText">Connecting Firebase... / 連線檢測中</span>
+        </button>
 
-        <!-- Discreet Teacher Panel Toggle -->
+        <!-- Teacher Panel Entry -->
         <button id="teacherToggleBtn" onclick="handleTeacherToggle()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-semibold text-white transition touch-btn">
           🔒 老師後台 / Teacher
         </button>
@@ -121,11 +115,33 @@
       <div class="flex flex-wrap items-center gap-2">
         <span class="font-bold text-slate-500">學習理念 / Learning Pillars:</span>
         <span class="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">🤝 容錯文化 Embracing Mistakes</span>
-        <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">🌱 看得見的成長 Visible Growth (v1→v2)</span>
+        <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">🌱 看得見的成長 Visible Growth</span>
         <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200 font-semibold">🎯 刻意練習 5-Min Mastery Quiz</span>
       </div>
       <div id="classProgressMini" class="text-slate-500 font-semibold">
         全班進度 / Class Progress: <span id="miniSubmittedCount" class="text-sky-700 font-bold">0/8</span> Groups
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       GLOBAL FIREBASE DIAGNOSTIC ALERT (Shown only if Firebase fails!)
+       ========================================================= -->
+  <div id="firebaseAlertBanner" class="hidden bg-rose-50 border-b-2 border-rose-300">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-start justify-between gap-3 text-xs md:text-sm text-rose-950">
+      <div class="space-y-1 flex-1 min-w-[260px]">
+        <div class="font-extrabold flex items-center gap-1.5">
+          <span>🚨 Firebase 雲端連線異常（目前已自動切換為「本機同瀏覽器暫存模式」，同機分頁測試仍可互通）</span>
+        </div>
+        <p id="firebaseAlertDetail" class="text-xs text-rose-900"></p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="openFirebaseDiagModal()" class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm">
+          🔧 查看修復教學與設定網址 / Fix Firebase
+        </button>
+        <button onclick="initFirebaseConnection(true)" class="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold">
+          🔄 重新連線 / Retry
+        </button>
       </div>
     </div>
   </div>
@@ -141,7 +157,7 @@
         <span class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center font-bold text-sm shrink-0">1</span>
         <div class="leading-tight">
           <div class="font-bold text-xs md:text-sm">Lab &amp; Logic (v1)</div>
-          <div class="text-[11px] opacity-85">實驗記錄與初步推論</div>
+          <div class="text-[11px] opacity-85">實驗記錄與初步結論</div>
         </div>
       </button>
 
@@ -156,8 +172,8 @@
       <button onclick="switchStudentStep(3)" id="tabStep3" class="touch-btn rounded-xl px-3 py-2.5 text-left flex items-center gap-2.5 step-tab-inactive">
         <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm shrink-0">3</span>
         <div class="leading-tight">
-          <div class="font-bold text-xs md:text-sm">Visible Growth (v2)</div>
-          <div class="text-[11px] opacity-75">看得見的成長：修正與見證</div>
+          <div class="font-bold text-xs md:text-sm">Confirm / Growth</div>
+          <div class="text-[11px] opacity-75">確認正確或修正結論</div>
         </div>
       </button>
 
@@ -170,7 +186,7 @@
       </button>
     </nav>
 
-    <!-- Focus Prompt Banner from Teacher (shown only if set) -->
+    <!-- Focus Prompt Banner from Teacher -->
     <div id="teacherFocusBanner" class="hidden bg-amber-50 border-l-4 border-amber-500 rounded-xl p-3.5 shadow-sm flex items-start gap-3">
       <span class="text-xl">📢</span>
       <div>
@@ -183,7 +199,6 @@
          STEP 1: QUALITATIVE OBSERVATION & LOGICAL REASONING (v1)
          ======================================================= -->
     <section id="studentStep1" class="space-y-5">
-      <!-- Task Intro Card (Embracing Mistakes Framing) -->
       <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -200,10 +215,9 @@
         </div>
         <p class="text-sm text-slate-600 mt-1.5">
           Tap the observed colour change for <b>both</b> litmus papers, then deduce whether each solution is <b>Acidic (酸性)</b>, <b>Alkaline (鹼性)</b>, or <b>Neutral (中性)</b>.
-          <span class="text-amber-700 font-medium">初步嘗試不怕錯！記錄真實觀察最重要，稍後可與全班對比並修正。</span>
+          <span class="text-amber-700 font-medium">初步嘗試不怕錯！先記錄真實觀察與結論，稍後可與全班對比。</span>
         </p>
 
-        <!-- Quick Litmus Color Legend -->
         <div class="mt-3 flex flex-wrap gap-3 text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5">
           <div class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
@@ -217,19 +231,17 @@
       </div>
 
       <!-- 5 Unknown Solutions Interactive Matrix -->
-      <div id="samplesMatrix" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3.5">
-        <!-- Rendered dynamically by JS -->
-      </div>
+      <div id="samplesMatrix" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3.5"></div>
 
-      <!-- Logical Reasoning Builder + Bilingual Scaffolding -->
+      <!-- Step 1 Conclusion / Logical Reasoning Builder -->
       <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 class="text-base font-bold text-slate-900">
-              🧠 Group Logical Reasoning / 本組科學推論與結論理據
+              🧠 Step 1 Conclusion &amp; Logical Reasoning / 本組初步結論與科學推論
             </h3>
             <p class="text-xs text-slate-500 mt-0.5">
-              Explain how your litmus results prove the nature of Solutions A–E (especially how you confirmed Neutral solutions). Tap vocabulary chips below to insert English words! / 點擊下方詞彙或句式即可插入英文作答。
+              Tap vocabulary chips or sentence starters below to explain your A–E conclusions. (You can also submit A–E observations first and finish writing your Step 1 conclusion in Step 3!) / 點擊下方詞彙輔助撰寫推論；如剛做完實驗，亦可先提交 A–E 結果，稍後於 Step 3 補寫或完善結論。
             </p>
           </div>
           <button onclick="clearReasoningBox('v1Reasoning')" class="text-xs text-slate-500 hover:text-rose-600 underline">
@@ -237,44 +249,36 @@
           </button>
         </div>
 
-        <!-- Helpful Vocabulary Bank (Weak-English Support) -->
         <div class="bg-sky-50/70 border border-sky-200 rounded-xl p-3 space-y-2">
           <div class="text-xs font-bold text-sky-900 flex items-center justify-between">
-            <span>📖 Helpful Vocabulary Bank / 核心英文詞彙輔助（點擊插入英文詞彙）</span>
+            <span>📖 Helpful Vocabulary Bank / 核心英文詞彙輔助（點擊插入）</span>
             <span class="text-[11px] font-normal text-sky-700">Tap word to insert</span>
           </div>
-          <div id="vocabBankV1" class="flex flex-wrap gap-1.5">
-            <!-- Rendered by JS -->
-          </div>
+          <div id="vocabBankV1" class="flex flex-wrap gap-1.5"></div>
         </div>
 
-        <!-- One-Tap Sentence Starters -->
         <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 space-y-2">
           <div class="text-xs font-bold text-emerald-900">
             ✍️ Sentence Starters / 句式鷹架（點擊套用推論句型）
           </div>
-          <div id="sentenceStartersV1" class="flex flex-wrap gap-1.5">
-            <!-- Rendered by JS -->
-          </div>
+          <div id="sentenceStartersV1" class="flex flex-wrap gap-1.5"></div>
         </div>
 
-        <!-- Reasoning Textarea -->
         <div>
           <textarea id="v1Reasoning" rows="4"
             class="w-full rounded-xl border border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-200 p-3 text-sm leading-relaxed"
             placeholder="Example: Solution A is acidic because blue litmus paper turned red and red litmus paper remained unchanged. Solution C is neutral because both red and blue litmus papers remained unchanged..."></textarea>
         </div>
 
-        <!-- Submit v1 Button -->
         <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
           <p id="v1ValidationMsg" class="text-xs font-semibold text-rose-600 hidden"></p>
-          <button onclick="submitV1()" class="ml-auto touch-btn px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md flex items-center gap-2">
-            ☁️ Submit Trial 1 Results / 提交本組實驗結果與推論 (v1)
+          <button id="btnSubmitV1" onclick="submitV1()" class="ml-auto touch-btn px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md flex items-center gap-2">
+            ☁️ Submit Step 1 Results / 提交本組實驗結果 (v1)
           </button>
         </div>
       </div>
 
-      <!-- Built-in Rule-Based Socratic Check (Unlocked after v1 submit) -->
+      <!-- Built-in Rule-Based Socratic Check -->
       <div id="socraticCard" class="hidden bg-gradient-to-br from-indigo-50 to-sky-50 rounded-2xl border border-indigo-200 p-5 shadow-sm space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
@@ -289,10 +293,8 @@
           <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">Guided Inquiry</span>
         </div>
 
-        <!-- Auto Logic Consistency Hint (Gentle, non-punitive) -->
         <div id="autoLogicHintBox" class="rounded-xl p-3.5 text-sm border"></div>
 
-        <!-- Interactive Socratic Question -->
         <div class="bg-white rounded-xl border border-indigo-100 p-4 space-y-3">
           <div class="text-sm font-bold text-slate-900">
             💡 Think Deeper / 深度思考：
@@ -303,9 +305,7 @@
               如果紅色石蕊試紙放入溶液 X 後保持紅色，我們能否立刻下結論說溶液 X 是中性？為什麼？
             </span>
           </div>
-          <div id="socraticOptions" class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <!-- Rendered by JS -->
-          </div>
+          <div id="socraticOptions" class="grid grid-cols-1 md:grid-cols-2 gap-2.5"></div>
           <div id="socraticFeedback" class="hidden rounded-xl p-3 text-sm font-medium"></div>
         </div>
 
@@ -338,38 +338,34 @@
             🔄 Refresh / 更新
           </button>
           <button onclick="switchStudentStep(3)" class="touch-btn px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow">
-            Step 3: Visible Growth / 前往修正與成長 →
+            Step 3: Confirm / Growth / 前往確認或修正 →
           </button>
         </div>
       </div>
 
-      <!-- Locked notice if teacher locked peer wall -->
       <div id="peerWallLockedBox" class="hidden bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
         <div class="text-4xl">🔒</div>
         <h3 class="text-lg font-bold text-slate-800">Peer Wall is Currently Paused by Teacher / 老師暫時鎖定了互評牆</h3>
         <p class="text-sm text-slate-500">Finish Step 1 first and wait for your teacher to open the exhibition wall. / 請先完成步驟 1，等待老師開放互評牆。</p>
       </div>
 
-      <!-- Peer Cards Grid -->
-      <div id="peerWallGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Rendered by JS -->
-      </div>
+      <div id="peerWallGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </section>
 
     <!-- =======================================================
-         STEP 3: VISIBLE GROWTH (v1 -> v2 REVISION & GROWTH CARD)
+         STEP 3: FLEXIBLE CONFIRMATION OR REVISION (NO FORCED EDIT!)
          ======================================================= -->
     <section id="studentStep3" class="hidden space-y-5">
       <div class="bg-white rounded-2xl border border-emerald-200 p-4 md:p-5 shadow-sm">
         <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-          STEP 3 · VISIBLE GROWTH (看得見的成長：v1 → v2)
+          STEP 3 · CONFIRMATION &amp; VISIBLE GROWTH (確認實驗正確 或 修正成長)
         </span>
         <h2 class="text-lg font-bold text-slate-900 mt-1">
-          Reflect, Self-Diagnose &amp; Revise Your Conclusion / 反思分歧、修正結論與見證成長
+          Verify Your Results &amp; Finalize Step 1 Conclusion / 確認實驗結果並完成結論
         </h2>
         <p class="text-xs md:text-sm text-slate-600 mt-1">
-          After viewing classmates' results and teacher discussion, did your group spot any experimental error or reasoning gap? Changing your mind based on evidence is true science!
-          <span class="text-emerald-700 font-semibold">根據證據修正想法，正是看得見的科學成長！</span>
+          If your group's A–E experiment results are already correct, <b>no modification is required</b>—simply confirm and write/refine your Step 1 conclusion! If you spotted an error after class comparison, switch to Revise mode to show your visible growth (v1 → v2).
+          <span class="text-emerald-700 font-semibold block mt-0.5">若已確認本組實驗結果正確，<b>無需強制修改 A–E</b>，只需確認並試寫／完善 Step 1 結論即可！</span>
         </p>
       </div>
 
@@ -382,49 +378,88 @@
       </div>
 
       <div id="v2Workspace" class="space-y-5">
-        <!-- Choice: Confirm v1 OR Revise to v2 -->
+        <!-- TWO-MODE SELECTOR: Confirm Correct (Default, No Forced Edit) vs Revise A-E -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button type="button" id="btnModeConfirm" onclick="setStep3Mode('confirm')"
+            class="touch-btn text-left p-4 rounded-2xl border-2 transition">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">✅</span>
+              <div>
+                <div class="font-extrabold text-sm">Mode A: Confirmed Correct (No Edit Needed)</div>
+                <div class="text-xs opacity-90 mt-0.5">已確認實驗正確，保留 A–E 結果，只確認／試寫 Step 1 結論</div>
+              </div>
+            </div>
+          </button>
+
+          <button type="button" id="btnModeRevise" onclick="setStep3Mode('revise')"
+            class="touch-btn text-left p-4 rounded-2xl border-2 transition">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">🔄</span>
+              <div>
+                <div class="font-extrabold text-sm">Mode B: Revise A–E Conclusions (v1 → v2)</div>
+                <div class="text-xs opacity-90 mt-0.5">對比後發現誤差／推論誤區，修改 A–E 結論並記錄成長</div>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Workspace Card -->
         <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-4">
-          <h3 class="text-base font-bold text-slate-900">
-            1. What did your group discover after class comparison? / 全班對比與討論後，本組有什麼發現？
-          </h3>
 
-          <!-- Mistake / Reflection Cause Chips -->
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-slate-600">Select Reflection Tag / 選擇反思標籤（可多選）：</label>
-            <div id="mistakeChips" class="flex flex-wrap gap-2">
-              <!-- Rendered by JS -->
+          <!-- MODE A READ-ONLY PREVIEW OF STEP 1 A-E RESULTS -->
+          <div id="step3ConfirmPreview" class="space-y-2">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="text-xs font-extrabold text-emerald-800 uppercase">
+                ✅ Confirmed Step 1 A–E Results (Keeping as-is / 保留原有實驗結果)
+              </div>
+              <span class="text-[11px] text-slate-500">無需修改 A–E</span>
+            </div>
+            <div id="step3ReadonlySamples" class="grid grid-cols-2 sm:grid-cols-5 gap-2"></div>
+          </div>
+
+          <!-- MODE B OPTIONAL REVISION SECTION (Hidden in Mode A!) -->
+          <div id="step3ReviseFields" class="hidden space-y-4">
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-slate-600">
+                1. What did your group discover? (Optional Tag / 反思標籤，可多選或留空)：
+              </label>
+              <div id="mistakeChips" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <div class="space-y-2 pt-1">
+              <label class="text-xs font-bold text-slate-600">
+                2. Revise A–E Conclusions (v2) / 修改 A–E 的最終結論（v2）：
+              </label>
+              <div id="v2SamplesMatrix" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"></div>
             </div>
           </div>
 
-          <!-- Editable A-E Conclusions for v2 -->
-          <div class="space-y-2 pt-2">
-            <label class="text-xs font-bold text-slate-600">
-              2. Final Revised Conclusions for A–E (v2) / 確認或修正 A–E 的最終結論（v2）：
-            </label>
-            <div id="v2SamplesMatrix" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              <!-- Rendered by JS -->
+          <!-- SHARED CONCLUSION BOX (In Mode A: Write/Confirm Step 1 Conclusion; In Mode B: Write Revised Conclusion) -->
+          <div class="space-y-2 pt-2 border-t border-slate-100">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <label id="step3ConclusionLabel" class="text-xs md:text-sm font-bold text-slate-800">
+                ✍️ Final Step 1 Conclusion / 確認或試寫 Step 1 結論（已自動帶入 Step 1 內容，可直接確認或完善）：
+              </label>
+              <button type="button" onclick="copyStep1ConclusionToStep3()" class="text-xs text-sky-700 hover:underline font-semibold">
+                ↩ 載入 Step 1 原文 / Load Step 1 Text
+              </button>
             </div>
-          </div>
-
-          <!-- Revised Reasoning -->
-          <div class="space-y-2 pt-2">
-            <label class="text-xs font-bold text-slate-600">
-              3. Revised Logical Reasoning &amp; What We Learned / 修正後的推論及我們的反思：
-            </label>
             <div id="vocabBankV2" class="flex flex-wrap gap-1.5 bg-sky-50/70 border border-sky-200 rounded-xl p-2.5"></div>
-            <textarea id="v2Reasoning" rows="3"
-              class="w-full rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 p-3 text-sm"
-              placeholder="Write your refined conclusion or explain why you changed (or kept) your Trial 1 answer..."></textarea>
+            <div id="sentenceStartersV2" class="flex flex-wrap gap-1.5 bg-emerald-50/70 border border-emerald-200 rounded-xl p-2.5"></div>
+            <textarea id="v2Reasoning" rows="4"
+              class="w-full rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 p-3 text-sm leading-relaxed"
+              placeholder="Write or confirm your Step 1 conclusion here... Example: Solution A and D are acidic because blue litmus paper turned red..."></textarea>
           </div>
 
-          <div class="flex justify-end">
-            <button onclick="submitV2()" class="touch-btn px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md">
-              🌱 Save Final Reflection &amp; Generate Growth Card / 儲存修正並生成成長見證卡 (v2)
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p id="v2ValidationMsg" class="text-xs font-semibold text-rose-600 hidden"></p>
+            <button id="btnSubmitStep3" onclick="submitV2()" class="ml-auto touch-btn px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md">
+              ✅ Confirm Experiment Correct &amp; Save Conclusion / 確認正確並儲存結論
             </button>
           </div>
         </div>
 
-        <!-- Celebratory Visible Growth Card (Before -> After) -->
+        <!-- Visible Growth / Verification Card -->
         <div id="growthSummaryCard" class="hidden bg-gradient-to-br from-emerald-50 via-white to-sky-50 rounded-2xl border-2 border-emerald-300 p-5 shadow-md space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2.5">
@@ -434,12 +469,10 @@
                 <p id="growthCardSubtitle" class="text-xs text-emerald-700 font-medium"></p>
               </div>
             </div>
-            <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-bold">v1 → v2 Verified</span>
+            <span id="growthCardBadge" class="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-bold">Verified</span>
           </div>
 
-          <div id="growthComparisonBody" class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <!-- Rendered by JS -->
-          </div>
+          <div id="growthComparisonBody" class="grid grid-cols-1 md:grid-cols-3 gap-3.5"></div>
 
           <div class="flex justify-end">
             <button onclick="switchStudentStep(4)" class="touch-btn px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow">
@@ -471,22 +504,16 @@
         </div>
       </div>
 
-      <!-- Locked Quiz Holding Screen -->
       <div id="quizLockedBox" class="hidden bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3 shadow-sm">
         <div class="text-5xl">⏳</div>
-        <h3 class="text-lg font-bold text-slate-800">
-          Waiting for Teacher to Unlock the Final 5-Min Quiz
-        </h3>
+        <h3 class="text-lg font-bold text-slate-800">Waiting for Teacher to Unlock the Final 5-Min Quiz</h3>
         <p class="text-sm text-slate-600 max-w-md mx-auto">
           請等待老師於最後 5 分鐘開啟刻意練習小測。老師可點擊右上角「老師後台」一鍵解鎖！
         </p>
       </div>
 
-      <!-- Quiz Form -->
       <div id="quizActiveBox" class="space-y-4">
-        <div id="quizQuestionsContainer" class="space-y-4">
-          <!-- Rendered by JS -->
-        </div>
+        <div id="quizQuestionsContainer" class="space-y-4"></div>
 
         <div id="quizSubmitBar" class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
           <p id="quizValidationMsg" class="text-xs font-semibold text-rose-600 hidden"></p>
@@ -495,7 +522,6 @@
           </button>
         </div>
 
-        <!-- Quiz Score Summary Banner -->
         <div id="quizResultBanner" class="hidden rounded-2xl border-2 p-5 shadow-sm"></div>
       </div>
     </section>
@@ -514,17 +540,8 @@
           <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
             🧑‍🏫 Teacher Live Diagnostics / 老師課堂即時診斷後台
           </h2>
-          <!-- Class Selector -->
-          <div class="flex items-center gap-1.5 bg-slate-100 rounded-xl px-2.5 py-1.5">
-            <label class="text-xs font-bold text-slate-600">Class / 班別:</label>
-            <select id="teacherClassSelect" onchange="changeTeacherClass(this.value)" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800">
-              <option value="2A">2A</option>
-              <option value="2B">2B</option>
-              <option value="2C">2C</option>
-              <option value="2D">2D</option>
-              <option value="2E">2E</option>
-            </select>
-          </div>
+          <!-- All-Classes Activity Pills (Never miss which class submitted!) -->
+          <div id="teacherClassPills" class="flex flex-wrap items-center gap-1.5"></div>
         </div>
 
         <!-- Live Counters -->
@@ -533,7 +550,7 @@
             Lab Submitted: <span id="tStatSubmitted">0/8</span>
           </span>
           <span class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
-            Revised (v2): <span id="tStatRevised">0</span>
+            Step 3 Done: <span id="tStatRevised">0</span>
           </span>
           <span class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-800 border border-indigo-200">
             Quiz Done: <span id="tStatQuiz">0</span>
@@ -543,10 +560,9 @@
 
       <!-- Classroom Pacing Controls & Utilities -->
       <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
-        <!-- Switches -->
         <div class="flex flex-wrap items-center gap-2">
           <button id="btnTogglePeerWall" onclick="toggleControl('peerWallUnlocked')" class="touch-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition">
-            🔓 Peer Wall: ON
+            🔓 Peer Wall: OPEN
           </button>
           <button id="btnToggleQuiz" onclick="toggleControl('quizUnlocked')" class="touch-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition">
             🔒 5-Min Quiz: LOCKED
@@ -556,10 +572,12 @@
           </button>
         </div>
 
-        <!-- Data Actions -->
         <div class="flex flex-wrap items-center gap-2">
+          <button onclick="openFirebaseDiagModal()" class="touch-btn px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold">
+            🔌 Firebase 連線設定
+          </button>
           <button onclick="autoFillMissingGroups()" class="touch-btn px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold">
-            ✨ 模擬補位未交組別 / Auto-Fill Missing
+            ✨ 模擬補位未交組別 / Auto-Fill
           </button>
           <button onclick="exportClassCSV()" class="touch-btn px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">
             📥 Export CSV / 匯出數據
@@ -570,7 +588,7 @@
         </div>
       </div>
 
-      <!-- Push Live Focus Prompt to Students -->
+      <!-- Push Live Focus Prompt -->
       <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
         <span class="text-xs font-bold text-slate-600">📢 Push Discussion Focus / 推送課堂討論焦點：</span>
         <input id="teacherFocusInput" type="text"
@@ -588,19 +606,18 @@
     <!-- Teacher Sub-Tabs -->
     <div class="flex flex-wrap gap-2">
       <button onclick="switchTeacherTab('conflicts')" id="tTabConflicts" class="touch-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold step-tab-active">
-        🚨 Smart Conflict Detector &amp; Matrix / 智能分歧診斷與總覽
+        🚨 Smart Conflict Detector &amp; Working / 智能診斷與學生作答總覽
       </button>
       <button onclick="switchTeacherTab('growth')" id="tTabGrowth" class="touch-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold step-tab-inactive">
-        🌱 Visible Growth (v1→v2) / 成長修正追蹤
+        🌱 Step 3 Confirm &amp; Growth / 確認與修正追蹤
       </button>
       <button onclick="switchTeacherTab('quiz')" id="tTabQuiz" class="touch-btn px-4 py-2 rounded-xl text-xs md:text-sm font-bold step-tab-inactive">
         📊 5-Min MC Quiz Analytics / 刻意練習小測分析
       </button>
     </div>
 
-    <!-- TEACHER TAB 1: SMART CONFLICT DETECTOR & CLASS MATRIX -->
+    <!-- TEACHER TAB 1: SMART CONFLICT DETECTOR, MATRIX & FULL STUDENT WORKING -->
     <section id="teacherTabConflicts" class="space-y-4">
-      <!-- Smart Diagnostic Cards -->
       <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -608,22 +625,20 @@
               🔬 Automated Pedagogical Conflict Detector / 自動實驗與推論分歧偵測
             </h3>
             <p class="text-xs text-slate-500">
-              Automatically distinguishes: (1) <b>Experimental Discrepancy</b> (different litmus colours observed) vs (2) <b>Same Colour, Different Conclusion</b> (reasoning gap!). Click any alert to project anonymously.
+              Automatically distinguishes: (1) <b>Experimental Discrepancy</b> (different litmus colours) vs (2) <b>Same Colour, Different Conclusion</b> (reasoning gap). Click to project anonymously.
             </p>
           </div>
-          <span class="text-xs font-semibold text-slate-500">Real-time Analysis</span>
+          <span id="teacherActiveClassTag" class="px-2.5 py-1 rounded-full bg-sky-100 text-sky-900 text-xs font-bold">Viewing: 2A</span>
         </div>
 
-        <div id="conflictAlertsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <!-- Rendered by JS -->
-        </div>
+        <div id="conflictAlertsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
       </div>
 
       <!-- Full Class A-E Matrix Table -->
       <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h3 class="text-base font-extrabold text-slate-900">
-            📋 All Groups A–E Results Matrix / 全班各組 A–E 觀察與結論總覽表
+            📋 All Groups A–E Results &amp; Working Matrix / 全班各組 A–E 觀察、結論與作答總覽
           </h3>
           <div class="flex items-center gap-3 text-[11px] font-semibold text-slate-600">
             <span>🔴→🔴 Red unchanged</span>
@@ -642,44 +657,37 @@
                 <th class="p-2.5 font-bold text-center">Solution C</th>
                 <th class="p-2.5 font-bold text-center">Solution D</th>
                 <th class="p-2.5 font-bold text-center">Solution E</th>
-                <th class="p-2.5 font-bold">Reasoning / 推論摘要</th>
+                <th class="p-2.5 font-bold">Conclusion &amp; Socratic Working / 結論與思考歷程</th>
               </tr>
             </thead>
-            <tbody id="teacherMatrixBody" class="divide-y divide-slate-100">
-              <!-- Rendered by JS -->
-            </tbody>
+            <tbody id="teacherMatrixBody" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- TEACHER TAB 2: VISIBLE GROWTH TRACKER -->
+    <!-- TEACHER TAB 2: STEP 3 CONFIRMATION & VISIBLE GROWTH TRACKER -->
     <section id="teacherTabGrowth" class="hidden space-y-4">
       <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-4">
         <div>
           <h3 class="text-base font-extrabold text-slate-900">
-            🌱 Class Visible Growth Tracker (v1 → v2) / 全班看得見的成長追蹤
+            🌱 Step 3 Confirmation &amp; Visible Growth Tracker / 各組確認與修正成長追蹤
           </h3>
           <p class="text-xs text-slate-500">
-            Inspect which groups revised their initial conclusions after peer comparison or class discussion, and the mistake causes they self-diagnosed.
+            See which groups confirmed their Trial 1 experiment was accurate (writing/refining their Step 1 conclusion) vs groups that revised A–E conclusions (v1 → v2).
           </p>
         </div>
-        <div id="teacherGrowthGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <!-- Rendered by JS -->
-        </div>
+        <div id="teacherGrowthGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5"></div>
       </div>
     </section>
 
     <!-- TEACHER TAB 3: 5-MIN MC QUIZ ANALYTICS -->
     <section id="teacherTabQuiz" class="hidden space-y-4">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <!-- Bar Chart Card -->
         <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <h3 class="text-base font-extrabold text-slate-900">
-                📊 Per-Question Accuracy / 各題答對率即時分佈
-              </h3>
+              <h3 class="text-base font-extrabold text-slate-900">📊 Per-Question Accuracy / 各題答對率即時分佈</h3>
               <p class="text-xs text-slate-500">Green ≥ 75% · Amber 50–74% · Red &lt; 50% (Priority Debrief)</p>
             </div>
             <span id="quizAvgScoreBadge" class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-900 text-xs font-bold">
@@ -691,23 +699,15 @@
           </div>
         </div>
 
-        <!-- Option Distribution Breakdown -->
         <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-3">
-          <h3 class="text-base font-extrabold text-slate-900">
-            🔍 Distractor Breakdown / 選項分佈
-          </h3>
-          <div id="quizOptionBreakdown" class="space-y-2.5 text-xs">
-            <!-- Rendered by JS -->
-          </div>
+          <h3 class="text-base font-extrabold text-slate-900">🔍 Distractor Breakdown / 選項分佈</h3>
+          <div id="quizOptionBreakdown" class="space-y-2.5 text-xs"></div>
         </div>
       </div>
 
-      <!-- Individual Student Roster Table -->
       <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-3">
         <div class="flex items-center justify-between flex-wrap gap-2">
-          <h3 class="text-base font-extrabold text-slate-900">
-            🧑‍🎓 Individual Student Quiz Roster / 學生個人小測成績表
-          </h3>
+          <h3 class="text-base font-extrabold text-slate-900">🧑‍🎓 Individual Student Quiz Roster / 學生個人小測成績表</h3>
           <div class="flex gap-2">
             <button onclick="setQuizSort('classNo')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold">Sort by Class No.</button>
             <button onclick="setQuizSort('score')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold">Sort by Score</button>
@@ -727,9 +727,7 @@
                 <th class="p-2.5 font-bold text-center">Score / 分數</th>
               </tr>
             </thead>
-            <tbody id="quizRosterBody" class="divide-y divide-slate-100">
-              <!-- Rendered by JS -->
-            </tbody>
+            <tbody id="quizRosterBody" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </div>
@@ -738,7 +736,7 @@
   </main>
 
   <!-- =========================================================
-       MODAL 1: STUDENT LOGIN (CLASS + GROUP + CLASS NO.)
+       MODAL 1: STUDENT LOGIN
        ========================================================= -->
   <div id="loginModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -777,8 +775,9 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Class No. / 學號 (1–40)</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Class No. / 學號 (1–45)</label>
           <input id="loginClassNo" type="number" min="1" max="45" placeholder="e.g. 12"
+            onkeydown="if(event.key==='Enter') confirmStudentLogin()"
             class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold" />
         </div>
       </div>
@@ -834,38 +833,91 @@
     </div>
   </div>
 
+  <!-- =========================================================
+       MODAL 4: FIREBASE DIAGNOSTICS & DATABASE URL HELPER
+       ========================================================= -->
+  <div id="firebaseDiagModal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <h3 class="text-lg font-extrabold text-slate-900">🔌 Firebase Realtime Database 連線診斷</h3>
+        <button onclick="closeModal('firebaseDiagModal')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">✕</button>
+      </div>
+
+      <div id="diagStatusBox" class="rounded-xl p-3.5 text-xs md:text-sm border"></div>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-slate-700">
+          1. 核對或貼上你的 Realtime Database 網址（在 Firebase → Realtime Database → 資料 頂部複製）：
+        </label>
+        <div class="flex gap-2 flex-wrap">
+          <input id="customDbUrlInput" type="text"
+            class="flex-1 min-w-[240px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono"
+            placeholder="https://sci-interactive-data-default-rtdb.asia-southeast1.firebasedatabase.app" />
+          <button onclick="applyCustomDbUrl()" class="px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold">
+            測試並連線 / Test &amp; Connect
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-800">2. 必須在 Firebase → Realtime Database → 規則 (Rules) 貼上並按「發布」：</span>
+          <button onclick="copyFirebaseRules()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-white text-[11px] font-bold">
+            📋 複製規則 / Copy
+          </button>
+        </div>
+        <pre class="bg-slate-900 text-emerald-300 rounded-lg p-3 text-xs overflow-x-auto">{
+  "rules": {
+    "lessons": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}</pre>
+      </div>
+
+      <div class="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-xl p-3">
+        💡 <b>提示：</b>即使 Firebase 尚未完成規則發布，本網頁亦已自動啟用「本機同瀏覽器即時同步」，你在同一台電腦開兩個分頁測試學生與老師畫面，數據會即時互通；完成 Firebase 規則發布後即可跨多台 iPad 同步！
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-xs md:text-sm font-semibold"></div>
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-xs md:text-sm font-semibold max-w-md"></div>
 
   <!-- =========================================================
        APPLICATION SCRIPT
        ========================================================= -->
   <script>
     // =========================================================
-    // [STEP 1] 貼上你的 Firebase Realtime Database 設定
-    // Paste your Firebase project config below.
-    // 未填寫前會自動啟用「離線預覽模式 (Demo Mode)」方便備課測試。
+    // Firebase Live Config (Auto-probes US / Singapore / Europe RTDB URLs!)
     // =========================================================
-    const FIREBASE_CONFIG = {
+    const FIREBASE_BASE_CONFIG = {
       apiKey: "AIzaSyClWy_3U3DGZ5jqmAO44q8m-vUYUUth1nE",
       authDomain: "sci-interactive-data.firebaseapp.com",
-      databaseURL: "https://sci-interactive-data-default-rtdb.firebaseio.com",
       projectId: "sci-interactive-data",
       storageBucket: "sci-interactive-data.firebasestorage.app",
       messagingSenderId: "480852477684",
       appId: "1:480852477684:web:569f4d05a84c9df478c0a1",
       measurementId: "G-CHDXC97KLX"
     };
-    const LESSON_ID = "f2_sci_acid_alkali_ae_2026"; // Change per lesson to isolate data
-    const TEACHER_PWD = "swcsciteacher";
 
-    // =========================================================
-    // CURRICULUM & PEDAGOGICAL CONSTANTS
-    // =========================================================
+    const CANDIDATE_DB_URLS = [
+      "https://sci-interactive-data-default-rtdb.asia-southeast1.firebasedatabase.app",
+      "https://sci-interactive-data-default-rtdb.firebaseio.com",
+      "https://sci-interactive-data-default-rtdb.europe-west1.firebasedatabase.app"
+    ];
+
+    const LESSON_ID = "f2_sci_acid_alkali_ae_2026";
+    const TEACHER_PWD = "swcsciteacher";
+    const CLASSES = ["2A", "2B", "2C", "2D", "2E"];
     const SAMPLES = ["A", "B", "C", "D", "E"];
     const ALL_GROUPS = ["Group 1", "Group 2", "Group 3", "Group 4", "Group 5", "Group 6", "Group 7", "Group 8"];
     const ANON_LABELS = ["Team Alpha", "Team Beta", "Team Gamma", "Team Delta", "Team Epsilon", "Team Zeta", "Team Eta", "Team Theta"];
 
+    // =========================================================
+    // CURRICULUM & SCAFFOLDING DATA
+    // =========================================================
     const VOCAB_BANK = [
       { en: "acidic", zh: "酸性的" },
       { en: "alkaline", zh: "鹼性的" },
@@ -896,12 +948,11 @@
     ];
 
     const MISTAKE_TAGS = [
-      { id: "kept", label: "✅ Our v1 logic was solid / 原結論正確且穩固" },
       { id: "litmus_rule", label: "🔄 Confused red/blue litmus rule / 混淆紅藍石蕊規則" },
       { id: "one_paper", label: "📄 Only looked at 1 litmus paper / 只看了一張試紙下結論" },
       { id: "contamination", label: "💧 Dropper contamination / 滴管交叉污染" },
       { id: "color_misread", label: "👀 Misread faint colour / 看錯微弱變色" },
-      { id: "english_detail", label: "✍️ Improved English reasoning / 完善了英文推論" }
+      { id: "english_detail", label: "✍️ Improved English conclusion / 完善了英文結論" }
     ];
 
     const SOCRATIC_OPTIONS = [
@@ -910,32 +961,31 @@
         en: "Yes! No colour change always means the solution is neutral.",
         zh: "可以！沒有變色就一定代表是中性溶液。",
         correct: false,
-        feedback: "Not quite! Think carefully: what happens when you put RED litmus paper into an ACID (like vinegar)? It also stays red! So red litmus staying red means it could be EITHER acidic OR neutral. / 再想想：把紅石蕊放入酸（例如白醋）也會保持紅色！所以只看紅石蕊不變色，無法分辨是酸性還是中性。"
+        feedback: "Not quite! Put RED litmus paper into an ACID (like vinegar) and it also stays red! So red litmus staying red means it could be EITHER acidic OR neutral. / 再想想：把紅石蕊放入酸（如白醋）也會保持紅色！只看紅石蕊不變色，無法分辨是酸性還是中性。"
       },
       {
         id: "B",
         en: "No! It could be acidic OR neutral. We MUST test with blue litmus paper too.",
         zh: "不可以！它可能是酸性或中性，必須同時用藍色石蕊試紙測試才能確定。",
         correct: true,
-        feedback: "Spot on! 🌟 Because both acidic and neutral solutions leave red litmus paper red, only testing BOTH red and blue litmus papers lets us logically separate Acidic, Alkaline, and Neutral. / 完全正確！正因酸性與中性都不會令紅石蕊變色，必須雙管齊下使用紅、藍石蕊才能嚴密推論！"
+        feedback: "Spot on! 🌟 Both acidic and neutral solutions leave red litmus paper red, so we MUST test BOTH red and blue litmus papers to distinguish Acidic, Alkaline, and Neutral. / 完全正確！正因酸性與中性都不會令紅石蕊變色，必須同時用紅、藍石蕊才能嚴密推論！"
       },
       {
         id: "C",
         en: "No, red litmus staying red means it must be alkaline.",
         zh: "不可以，紅石蕊保持紅色代表它一定是鹼性。",
         correct: false,
-        feedback: "Careful with the rule! Alkaline solutions turn red litmus paper BLUE (think: B for Base / Blue). / 小心記錯規則：鹼性溶液會令紅石蕊變藍（Base → Blue）！"
+        feedback: "Careful with the rule! Alkaline solutions turn red litmus paper BLUE (B for Base / Blue). / 小心記錯規則：鹼性溶液會令紅石蕊變藍（Base → Blue）！"
       },
       {
         id: "D",
         en: "Yes, as long as we dip the red litmus paper twice.",
         zh: "可以，只要把紅色石蕊試紙浸兩次就足夠。",
         correct: false,
-        feedback: "Dipping red litmus twice still cannot distinguish an acid from a neutral liquid! You need the complementary test with blue litmus paper. / 浸兩次紅石蕊依然分不到酸與中性，需要藍色石蕊作互補測試。"
+        feedback: "Dipping red litmus twice still cannot separate an acid from a neutral solution! You need blue litmus paper too. / 浸兩次紅石蕊依然分不到酸與中性，需要藍色石蕊作互補測試。"
       }
     ];
 
-    // Final 5-Minute Deliberate Practice MC Quiz (5 High-Diagnostic Questions)
     const QUIZ_QUESTIONS = [
       {
         id: "q1",
@@ -952,7 +1002,7 @@
           A: "Correct! Acids turn blue litmus paper red and leave red litmus unchanged. / 正確！酸令藍石蕊變紅，紅石蕊不變。",
           B: "Trap: Alkalis turn red litmus blue, not blue litmus red. / 誤區：鹼會令紅石蕊變藍。",
           C: "Trap: Neutral solutions do not change either litmus paper. / 誤區：中性溶液不會令任何石蕊變色。",
-          D: "We tested BOTH papers and saw a clear colour change, so we CAN conclude it is acidic. / 我們已用雙試紙並觀察到變色，可以確定是酸性。"
+          D: "We tested BOTH papers and saw a clear colour change, so we CAN conclude it is acidic. / 已用雙試紙並觀察到變色，可確定是酸性。"
         }
       },
       {
@@ -968,7 +1018,7 @@
         answer: "B",
         explanations: {
           A: "Classic trap! Neutral leaves red litmus unchanged, BUT acids ALSO leave red litmus unchanged. / 常見陷阱！中性和酸性都不會令紅石蕊變色。",
-          B: "Excellent logical reasoning! Testing only one paper leaves two possibilities (acidic or neutral). / 推論非常嚴謹！只測紅石蕊無法排除酸性，必須加測藍石蕊。",
+          B: "Excellent logical reasoning! Testing only one paper leaves two possibilities (acidic or neutral). / 推論嚴謹！只測紅石蕊無法排除酸性，必須加測藍石蕊。",
           C: "Alkalis would have turned red litmus paper blue. / 鹼性會令紅石蕊變藍。",
           D: "No single litmus paper can distinguish all three categories alone. / 單一張石蕊試紙無法分辨酸、鹼、中性三者。"
         }
@@ -1022,7 +1072,7 @@
         answer: "B",
         explanations: {
           A: "Neutral solutions do not spontaneously turn into acids. / 中性溶液不會無故變酸。",
-          B: "Great scientific thinking! Identifying contamination and re-testing with a clean dropper is how real scientists resolve experimental discrepancies. / 非常棒的科學思維！找出交叉污染原因並用潔淨滴管複測，正是科學探究的精神。",
+          B: "Great scientific thinking! Identifying contamination and re-testing with a clean dropper resolves experimental discrepancies. / 非常棒的科學思維！找出交叉污染並用潔淨滴管複測，正是科學探究的精神。",
           C: "Neutral water does not change blue litmus paper. / 中性水不會令藍石蕊變紅。",
           D: "Scientists investigate discrepancies and re-test rather than blindly copying. / 科學家會查明誤差並複測，而不是盲目抄寫。"
         }
@@ -1032,54 +1082,69 @@
     // =========================================================
     // GLOBAL APPLICATION STATE
     // =========================================================
-    let isDemoMode = true;
+    let syncMode = "connecting"; // "cloud" | "local" | "connecting"
+    let activeDbUrl = "";
+    let diagInfo = { status: "checking", message: "Checking Firebase Realtime Database..." };
     let db = null;
-    let currentView = "student"; // "student" | "teacher"
+    let firebaseApp = null;
+    let rootRef = null;
+
+    let currentView = "student";
     let currentStudentStep = 1;
     let currentTeacherTab = "conflicts";
+    let step3Mode = "confirm"; // "confirm" (default, no forced edit!) | "revise"
     let quizSortBy = "classNo";
     let quizChartInstance = null;
 
-    let student = {
-      className: "2A",
-      groupId: "Group 1",
-      classNo: ""
-    };
-
+    let student = { className: "2A", groupId: "Group 1", classNo: "" };
     let teacherClass = "2A";
 
-    // Local draft state for Step 1 & Step 3
     let v1Draft = createEmptySamples();
     let v2Draft = createEmptySamples();
     let selectedMistakeTags = [];
     let selectedQuizAnswers = {};
+    let v2DraftHydratedForKey = "";
 
-    // Live synced state for active class
-    let classData = {
-      groups: {},
-      peerReviews: {},
-      quizzes: {},
-      control: {
-        peerWallUnlocked: true,
-        quizUnlocked: false,
-        anonymousMode: false,
-        focusPrompt: ""
-      }
-    };
+    // All classes data store: allLessonsData[cls] = { groups, peerReviews, quizzes, control }
+    let allLessonsData = {};
 
-    let firebaseRef = null;
+    function defaultClassState() {
+      return {
+        groups: {},
+        peerReviews: {},
+        quizzes: {},
+        control: {
+          peerWallUnlocked: true,
+          quizUnlocked: false,
+          anonymousMode: false,
+          focusPrompt: ""
+        }
+      };
+    }
+
+    function getActiveClassName() {
+      return currentView === "teacher" ? teacherClass : student.className;
+    }
+
+    function getClassData(cls) {
+      const raw = allLessonsData[cls] || {};
+      return {
+        groups: raw.groups || {},
+        peerReviews: raw.peerReviews || {},
+        quizzes: raw.quizzes || {},
+        control: Object.assign(
+          { peerWallUnlocked: true, quizUnlocked: false, anonymousMode: false, focusPrompt: "" },
+          raw.control || {}
+        )
+      };
+    }
 
     function createEmptySamples() {
       const obj = {};
-      SAMPLES.forEach(s => {
-        obj[s] = { redLitmus: "", blueLitmus: "", conclusion: "" };
-      });
+      SAMPLES.forEach(s => { obj[s] = { redLitmus: "", blueLitmus: "", conclusion: "" }; });
       return obj;
     }
 
-    // =========================================================
-    // SECURITY HELPER (XSS Prevention)
-    // =========================================================
     function escHtml(str) {
       if (str === null || str === undefined) return "";
       return String(str)
@@ -1095,20 +1160,257 @@
       el.textContent = msg;
       el.classList.remove("hidden");
       clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(() => el.classList.add("hidden"), 2800);
+      window.__toastTimer = setTimeout(() => el.classList.add("hidden"), 3200);
     }
 
     // =========================================================
-    // INITIALIZATION & FIREBASE / DEMO MODE SETUP
+    // SMART FIREBASE MULTI-REGION AUTO-DISCOVERY & LOCAL FALLBACK
     // =========================================================
-    function isPlaceholderConfig(cfg) {
-      return !cfg || !cfg.apiKey || !cfg.databaseURL ||
-        String(cfg.apiKey).includes("PASTE_YOUR_") ||
-        String(cfg.databaseURL).includes("PASTE_YOUR_");
+    const LOCAL_STORE_KEY = `local_sync_${LESSON_ID}`;
+    const CUSTOM_URL_KEY = `custom_rtdb_url_${FIREBASE_BASE_CONFIG.projectId}`;
+
+    function loadLocalStore() {
+      try {
+        const raw = localStorage.getItem(LOCAL_STORE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
     }
 
+    function saveLocalStore(data) {
+      try {
+        localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(data));
+      } catch (e) {}
+    }
+
+    // Listen to localStorage changes from OTHER tabs in the same browser!
+    window.addEventListener("storage", (e) => {
+      if (e.key === LOCAL_STORE_KEY && syncMode === "local") {
+        allLessonsData = loadLocalStore();
+        onDataUpdated();
+      }
+    });
+
+    async function probeDatabaseUrl(url) {
+      const clean = url.replace(/\/+$/, "");
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4500);
+      try {
+        const resp = await fetch(`${clean}/lessons.json?shallow=true`, { signal: controller.signal });
+        clearTimeout(timer);
+        if (resp.status === 200) return { url: clean, code: 200, ok: true };
+        if (resp.status === 401 || resp.status === 403) return { url: clean, code: resp.status, ok: false, reason: "permission_denied" };
+        if (resp.status === 404) return { url: clean, code: 404, ok: false, reason: "not_found" };
+        return { url: clean, code: resp.status, ok: false, reason: "http_" + resp.status };
+      } catch (err) {
+        clearTimeout(timer);
+        return { url: clean, code: 0, ok: false, reason: err.name === "AbortError" ? "timeout" : "network" };
+      }
+    }
+
+    async function initFirebaseConnection(isRetry) {
+      setSyncBadge("connecting", "Connecting Firebase... / 連線檢測中");
+      document.getElementById("firebaseAlertBanner").classList.add("hidden");
+
+      const savedUrl = (localStorage.getItem(CUSTOM_URL_KEY) || "").trim();
+      const urlsToTry = [];
+      if (savedUrl) urlsToTry.push(savedUrl);
+      CANDIDATE_DB_URLS.forEach(u => { if (!urlsToTry.includes(u)) urlsToTry.push(u); });
+
+      let chosenUrl = "";
+      let permDeniedUrl = "";
+      const probeLogs = [];
+
+      for (const u of urlsToTry) {
+        const res = await probeDatabaseUrl(u);
+        probeLogs.push(`${res.url} → ${res.ok ? "200 OK" : (res.code || res.reason)}`);
+        if (res.ok) {
+          chosenUrl = res.url;
+          break;
+        }
+        if (res.reason === "permission_denied" && !permDeniedUrl) {
+          permDeniedUrl = res.url;
+        }
+      }
+
+      if (chosenUrl && typeof firebase !== "undefined") {
+        // Connect real Firebase RTDB using verified URL!
+        try {
+          if (rootRef) { rootRef.off(); rootRef = null; }
+          if (firebaseApp) {
+            await firebaseApp.delete().catch(() => {});
+            firebaseApp = null;
+          }
+          const cfg = Object.assign({}, FIREBASE_BASE_CONFIG, { databaseURL: chosenUrl });
+          firebaseApp = firebase.initializeApp(cfg, "app_" + Date.now());
+          db = firebaseApp.database();
+          activeDbUrl = chosenUrl;
+          syncMode = "cloud";
+
+          diagInfo = {
+            status: "ok",
+            url: chosenUrl,
+            message: `已成功連線至 Firebase Realtime Database：${chosenUrl}`
+          };
+          setSyncBadge("cloud", "Cloud Sync Active / 雲端即時同步");
+
+          // Subscribe to ALL classes under lessons/${LESSON_ID} so Teacher never misses any class!
+          rootRef = db.ref(`lessons/${LESSON_ID}`);
+          rootRef.on("value", (snap) => {
+            allLessonsData = snap.val() || {};
+            onDataUpdated();
+          }, (err) => {
+            console.error("Firebase read error:", err);
+            activateLocalFallback(
+              `Firebase 讀取權限被拒 (${err.code || err.message})。請確認 Realtime Database 規則已開放 lessons 路徑。`,
+              chosenUrl
+            );
+          });
+
+          // Monitor real socket connection
+          db.ref(".info/connected").on("value", (snap) => {
+            if (snap.val() === true) {
+              setSyncBadge("cloud", "Cloud Sync Active / 雲端即時同步");
+            }
+          });
+
+          if (isRetry) showToast("✅ Firebase 雲端連線成功！");
+          return;
+        } catch (err) {
+          console.error("Firebase init exception:", err);
+          activateLocalFallback(`Firebase 初始化錯誤：${err.message}`, chosenUrl);
+          return;
+        }
+      }
+
+      // If we found the DB but got 401 Permission Denied
+      if (permDeniedUrl) {
+        activeDbUrl = permDeniedUrl;
+        activateLocalFallback(
+          `已找到你的資料庫（${permDeniedUrl}），但被 Firebase 規則阻擋（401 Permission Denied）！請點擊右側「查看修復教學」，將 lessons 規則貼入 Firebase Console 並按「發布」。`,
+          permDeniedUrl
+        );
+        return;
+      }
+
+      // Otherwise DB not created yet / wrong region / offline
+      activateLocalFallback(
+        `在美國、新加坡及歐洲區域皆未偵測到已建立的 Realtime Database（${probeLogs.join("；")}）。請確認已在 Firebase Console → Realtime Database 點擊「建立資料庫」，或按右側按鈕貼上你的實際資料庫網址。`,
+        urlsToTry[0]
+      );
+    }
+
+    function activateLocalFallback(reasonText, suggestedUrl) {
+      syncMode = "local";
+      diagInfo = { status: "error", url: suggestedUrl || "", message: reasonText };
+      setSyncBadge("local", "Local Fallback / 本機暫存模式 (點擊修復)");
+      document.getElementById("firebaseAlertDetail").textContent = reasonText;
+      document.getElementById("firebaseAlertBanner").classList.remove("hidden");
+
+      // Load local cross-tab store so testing on same computer works seamlessly!
+      allLessonsData = loadLocalStore();
+      onDataUpdated();
+    }
+
+    function setSyncBadge(mode, text) {
+      const pill = document.getElementById("syncStatusPill");
+      const dot = document.getElementById("syncDot");
+      const txt = document.getElementById("syncText");
+      txt.textContent = text;
+      if (mode === "cloud") {
+        pill.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/25 border border-emerald-300/40 text-emerald-100 text-xs font-semibold cursor-pointer";
+        dot.className = "w-2 h-2 rounded-full bg-emerald-300";
+      } else if (mode === "local") {
+        pill.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/30 border border-rose-300/50 text-rose-100 text-xs font-semibold cursor-pointer";
+        dot.className = "w-2 h-2 rounded-full bg-rose-300 animate-pulse";
+      } else {
+        pill.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/25 border border-amber-300/40 text-amber-100 text-xs font-semibold cursor-pointer";
+        dot.className = "w-2 h-2 rounded-full bg-amber-300 animate-pulse";
+      }
+    }
+
+    function onSyncPillClick() {
+      openFirebaseDiagModal();
+    }
+
+    function openFirebaseDiagModal() {
+      const box = document.getElementById("diagStatusBox");
+      const inp = document.getElementById("customDbUrlInput");
+      inp.value = activeDbUrl || localStorage.getItem(CUSTOM_URL_KEY) || CANDIDATE_DB_URLS[0];
+
+      if (diagInfo.status === "ok") {
+        box.className = "rounded-xl p-3.5 text-xs md:text-sm border bg-emerald-50 border-emerald-300 text-emerald-950 font-semibold";
+        box.textContent = "✅ " + diagInfo.message;
+      } else {
+        box.className = "rounded-xl p-3.5 text-xs md:text-sm border bg-rose-50 border-rose-300 text-rose-950 font-semibold";
+        box.textContent = "⚠️ " + diagInfo.message;
+      }
+
+      const m = document.getElementById("firebaseDiagModal");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    }
+
+    async function applyCustomDbUrl() {
+      const val = document.getElementById("customDbUrlInput").value.trim().replace(/\/+$/, "");
+      if (!val.startsWith("https://")) {
+        showToast("⚠️ 網址需以 https:// 開頭");
+        return;
+      }
+      localStorage.setItem(CUSTOM_URL_KEY, val);
+      closeModal("firebaseDiagModal");
+      await initFirebaseConnection(true);
+    }
+
+    function copyFirebaseRules() {
+      const txt = `{\n  "rules": {\n    "lessons": {\n      ".read": true,\n      ".write": true\n    }\n  }\n}`;
+      navigator.clipboard.writeText(txt).then(() => {
+        showToast("📋 已複製 Firebase 規則！請貼到 Realtime Database → Rules 並按發布。");
+      }).catch(() => {
+        showToast("請手動複製上方黑色框內的規則文字。");
+      });
+    }
+
+    // =========================================================
+    // UNIFIED WRITE LAYER (Returns Promise, Never Fails Silently!)
+    // =========================================================
+    async function writePath(cls, subPath, value) {
+      if (syncMode === "cloud" && db) {
+        try {
+          await db.ref(`lessons/${LESSON_ID}/${cls}/${subPath}`).set(value);
+          return true;
+        } catch (err) {
+          console.error("Firebase write failed:", err);
+          showToast(`⚠️ 雲端寫入失敗 (${err.code || err.message})！請檢查 Firebase 規則。`);
+          activateLocalFallback(`寫入被拒 (${err.code || err.message})：請確認 Firebase Rules 已設為 ".write": true`, activeDbUrl);
+          return writeLocal(cls, subPath, value);
+        }
+      } else {
+        return writeLocal(cls, subPath, value);
+      }
+    }
+
+    function writeLocal(cls, subPath, value) {
+      const store = loadLocalStore();
+      if (!store[cls]) store[cls] = defaultClassState();
+      const parts = subPath.split("/");
+      let cur = store[cls];
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!cur[parts[i]] || typeof cur[parts[i]] !== "object") cur[parts[i]] = {};
+        cur = cur[parts[i]];
+      }
+      cur[parts[parts.length - 1]] = value;
+      saveLocalStore(store);
+      allLessonsData = store;
+      onDataUpdated();
+      return true;
+    }
+
+    // =========================================================
+    // APP BOOT & DATA REFRESH
+    // =========================================================
     function initApp() {
-      // Load saved student identity
       const saved = localStorage.getItem("f2_acid_alkali_student");
       if (saved) {
         try {
@@ -1120,24 +1422,6 @@
         } catch (e) {}
       }
 
-      // Check Firebase vs Demo Mode
-      if (!isPlaceholderConfig(FIREBASE_CONFIG) && typeof firebase !== "undefined") {
-        try {
-          firebase.initializeApp(FIREBASE_CONFIG);
-          db = firebase.database();
-          isDemoMode = false;
-          updateSyncBadge(true);
-        } catch (err) {
-          console.warn("Firebase init failed, switching to Demo Mode:", err);
-          isDemoMode = true;
-          updateSyncBadge(false);
-        }
-      } else {
-        isDemoMode = true;
-        updateSyncBadge(false);
-      }
-
-      // Render static UI scaffolding
       renderVocabBanks();
       renderSentenceStarters();
       renderSocraticOptions();
@@ -1145,270 +1429,27 @@
       renderQuizQuestions();
       renderSamplesMatrix();
       renderV2SamplesMatrix();
+      setStep3Mode("confirm");
 
-      // Open login if student not checked in yet
       if (!student.classNo) {
         openLoginModal();
       } else {
         updateHeaderIdentity();
       }
 
-      subscribeToClass(student.className);
+      initFirebaseConnection(false);
     }
 
-    function updateSyncBadge(cloudActive) {
-      const pill = document.getElementById("syncStatusPill");
-      const dot = document.getElementById("syncDot");
-      const text = document.getElementById("syncText");
-      if (cloudActive) {
-        pill.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/25 border border-emerald-300/40 text-emerald-100 text-xs font-semibold";
-        dot.className = "w-2 h-2 rounded-full bg-emerald-300";
-        text.textContent = "Cloud Sync Active / 雲端同步";
-      } else {
-        pill.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/25 border border-amber-300/40 text-amber-100 text-xs font-semibold";
-        dot.className = "w-2 h-2 rounded-full bg-amber-300 animate-pulse";
-        text.textContent = "Demo Mode / 離線預覽";
-      }
-    }
+    function onDataUpdated() {
+      const activeCls = getActiveClassName();
+      const classData = getClassData(activeCls);
 
-    // =========================================================
-    // DEMO DATA SEEDER (Demonstrates Conflict Detector Immediately!)
-    // =========================================================
-    function getDemoStorageKey(cls) {
-      return `demo_${LESSON_ID}_${cls}`;
-    }
-
-    function seedDemoClassData() {
-      // Realistic classroom data specifically showcasing:
-      // - Solution A: Acidic (all agree)
-      // - Solution B: Alkaline (all agree)
-      // - Solution C: Neutral -> Group 4 observed SAME colour (Red->Red, Blue->Blue) yet concluded ACIDIC! (Logic-Observation Conflict!)
-      // - Solution D: Acidic -> Group 3 observed DIFFERENT colour (Red->Blue, Blue->Blue) -> Experimental Discrepancy!
-      // - Solution E: Alkaline -> Group 2 & Group 3 both observed Red->Blue, Blue->Blue, yet Group 3 concluded Neutral!
-      return {
-        groups: {
-          "Group 1": {
-            groupId: "Group 1",
-            members: ["01", "02", "03", "04"],
-            v1: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-                D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "Solutions A and D are acidic because blue litmus paper turned red. Solutions B and E are alkaline because red litmus paper turned blue. Solution C is neutral because both litmus papers remained unchanged.",
-              submittedAt: Date.now() - 600000
-            },
-            v2: null,
-            current: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-                D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "Solutions A and D are acidic because blue litmus paper turned red. Solutions B and E are alkaline because red litmus paper turned blue. Solution C is neutral because both litmus papers remained unchanged."
-            }
-          },
-          "Group 2": {
-            groupId: "Group 2",
-            members: ["05", "06", "07", "08"],
-            v1: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-                D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "We tested both red and blue litmus paper. Only Solution C showed no colour change on both papers, therefore C is neutral.",
-              submittedAt: Date.now() - 520000
-            },
-            v2: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-                D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "Confirmed our Trial 1 results! Testing both litmus papers is essential to confirm neutral solutions.",
-              mistakeTags: ["kept", "english_detail"],
-              revisedAt: Date.now() - 180000
-            },
-            current: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-                D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "Confirmed our Trial 1 results! Testing both litmus papers is essential to confirm neutral solutions."
-            }
-          },
-          "Group 3": {
-            groupId: "Group 3",
-            members: ["09", "10", "11", "12"],
-            v1: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-                D: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "Solution D turned red litmus paper blue in our test, so we concluded D is alkaline. Maybe our dropper touched Solution B?",
-              submittedAt: Date.now() - 450000
-            },
-            v2: null,
-            current: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-                D: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "Solution D turned red litmus paper blue in our test, so we concluded D is alkaline. Maybe our dropper touched Solution B?"
-            }
-          },
-          "Group 4": {
-            groupId: "Group 4",
-            members: ["13", "14", "15", "16"],
-            v1: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "acidic" },
-                D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "In Solution C, red litmus paper remained red, so we thought Solution C is acidic.",
-              submittedAt: Date.now() - 390000
-            },
-            v2: null,
-            current: {
-              samples: {
-                A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
-                C: { redLitmus: "red", blueLitmus: "blue", conclusion: "acidic" },
-                D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-                E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
-              },
-              reasoning: "In Solution C, red litmus paper remained red, so we thought Solution C is acidic."
-            }
-          }
-        },
-        peerReviews: {
-          "Group 1": {
-            likes: { "Group 2_05": true, "Group 3_09": true },
-            comments: [
-              { id: "c1", fromGroup: "Group 2", fromClassNo: "05", tag: "🌟 Clear Logic / 推論清晰", text: "Very clear explanation for all 5 solutions!", time: Date.now() - 200000 }
-            ]
-          },
-          "Group 4": {
-            likes: { "Group 1_01": true },
-            comments: [
-              { id: "c2", fromGroup: "Group 1", fromClassNo: "01", tag: "🔍 Same colour, diff conclusion? / 同色但結論不同？", text: "Check Solution C! Your blue litmus stayed blue too, so it should be neutral.", time: Date.now() - 120000 }
-            ]
-          }
-        },
-        quizzes: {
-          "01": { classNo: "01", groupId: "Group 1", answers: { q1: "A", q2: "B", q3: "C", q4: "C", q5: "B" }, score: 5, total: 5, submittedAt: Date.now() - 90000 },
-          "05": { classNo: "05", groupId: "Group 2", answers: { q1: "A", q2: "A", q3: "C", q4: "C", q5: "B" }, score: 4, total: 5, submittedAt: Date.now() - 80000 },
-          "09": { classNo: "09", groupId: "Group 3", answers: { q1: "A", q2: "A", q3: "C", q4: "A", q5: "B" }, score: 3, total: 5, submittedAt: Date.now() - 70000 },
-          "13": { classNo: "13", groupId: "Group 4", answers: { q1: "A", q2: "A", q3: "B", q4: "C", q5: "B" }, score: 3, total: 5, submittedAt: Date.now() - 60000 }
-        },
-        control: {
-          peerWallUnlocked: true,
-          quizUnlocked: false,
-          anonymousMode: false,
-          focusPrompt: ""
-        }
-      };
-    }
-
-    function loadDemoClass(cls) {
-      const key = getDemoStorageKey(cls);
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        try {
-          return JSON.parse(raw);
-        } catch (e) {}
-      }
-      const seeded = seedDemoClassData();
-      localStorage.setItem(key, JSON.stringify(seeded));
-      return seeded;
-    }
-
-    function saveDemoClass(cls, data) {
-      localStorage.setItem(getDemoStorageKey(cls), JSON.stringify(data));
-    }
-
-    // =========================================================
-    // DATA LAYER (Unified Firebase RTDB + Demo Mode)
-    // =========================================================
-    function subscribeToClass(cls) {
-      if (firebaseRef) {
-        firebaseRef.off();
-        firebaseRef = null;
-      }
-
-      if (isDemoMode) {
-        classData = loadDemoClass(cls);
-        onClassDataUpdated();
-      } else {
-        firebaseRef = db.ref(`lessons/${LESSON_ID}/${cls}`);
-        firebaseRef.on("value", snapshot => {
-          const val = snapshot.val() || {};
-          classData = {
-            groups: val.groups || {},
-            peerReviews: val.peerReviews || {},
-            quizzes: val.quizzes || {},
-            control: Object.assign(
-              { peerWallUnlocked: true, quizUnlocked: false, anonymousMode: false, focusPrompt: "" },
-              val.control || {}
-            )
-          };
-          onClassDataUpdated();
-        });
-      }
-    }
-
-    function writePath(cls, subPath, value) {
-      if (isDemoMode) {
-        const data = loadDemoClass(cls);
-        const parts = subPath.split("/");
-        let cur = data;
-        for (let i = 0; i < parts.length - 1; i++) {
-          if (!cur[parts[i]] || typeof cur[parts[i]] !== "object") cur[parts[i]] = {};
-          cur = cur[parts[i]];
-        }
-        cur[parts[parts.length - 1]] = value;
-        saveDemoClass(cls, data);
-        if ((currentView === "student" && cls === student.className) || (currentView === "teacher" && cls === teacherClass)) {
-          classData = data;
-          onClassDataUpdated();
-        }
-      } else {
-        db.ref(`lessons/${LESSON_ID}/${cls}/${subPath}`).set(value).catch(err => {
-          console.error("Firebase write error:", err);
-          showToast("⚠️ Sync error, check Firebase rules!");
-        });
-      }
-    }
-
-    function onClassDataUpdated() {
-      // Update mini class counter
-      const subCount = Object.keys(classData.groups || {}).filter(g => classData.groups[g]?.v1).length;
+      // Mini progress counter
+      const subCount = Object.keys(classData.groups).filter(g => classData.groups[g]?.v1).length;
       document.getElementById("miniSubmittedCount").textContent = `${subCount}/8`;
 
-      // Update Focus Prompt Banner
-      const fp = (classData.control && classData.control.focusPrompt || "").trim();
+      // Focus Prompt Banner
+      const fp = (classData.control.focusPrompt || "").trim();
       const banner = document.getElementById("teacherFocusBanner");
       if (fp) {
         document.getElementById("teacherFocusText").textContent = fp;
@@ -1417,22 +1458,18 @@
         banner.classList.add("hidden");
       }
 
-      // Sync student's own group state into forms if available
       syncOwnGroupUI();
-
-      // Update Student Step 2 (Peer Wall) & Step 4 (Quiz Lock)
       renderPeerWall();
       updateQuizLockState();
       restoreOwnQuizIfSubmitted();
 
-      // Update Teacher Panel if active
       if (currentView === "teacher") {
         renderTeacherPanel();
       }
     }
 
     // =========================================================
-    // STUDENT IDENTITY & LOGIN
+    // STUDENT LOGIN
     // =========================================================
     function openLoginModal() {
       document.getElementById("loginClass").value = student.className || "2A";
@@ -1463,26 +1500,24 @@
       }
 
       const paddedNo = String(Number(noRaw)).padStart(2, "0");
-      const classChanged = student.className !== cls;
-
       student = { className: cls, groupId: grp, classNo: paddedNo };
+      teacherClass = cls;
       localStorage.setItem("f2_acid_alkali_student", JSON.stringify(student));
       closeModal("loginModal");
       updateHeaderIdentity();
 
-      // Reset local drafts when switching group
+      // Reset drafts for new group
       v1Draft = createEmptySamples();
       v2Draft = createEmptySamples();
       selectedMistakeTags = [];
       selectedQuizAnswers = {};
+      v2DraftHydratedForKey = "";
+      document.getElementById("v1Reasoning").value = "";
+      document.getElementById("v2Reasoning").value = "";
 
-      if (classChanged) {
-        teacherClass = cls;
-        subscribeToClass(cls);
-      } else {
-        onClassDataUpdated();
-      }
-
+      renderSamplesMatrix();
+      renderV2SamplesMatrix();
+      onDataUpdated();
       showToast(`✅ Logged in: ${cls} · ${grp} · No.${paddedNo}`);
     }
 
@@ -1494,7 +1529,7 @@
     }
 
     // =========================================================
-    // NAVIGATION (STUDENT STEPS)
+    // STUDENT NAVIGATION
     // =========================================================
     function switchStudentStep(step) {
       currentStudentStep = step;
@@ -1523,43 +1558,37 @@
     }
 
     // =========================================================
-    // STEP 1: INTERACTIVE LITMUS MATRIX & SCAFFOLDING
+    // STEP 1: LITMUS MATRIX, VOCABULARY & SOCRATIC CHECK
     // =========================================================
     function renderVocabBanks() {
-      const htmlV1 = VOCAB_BANK.map(v =>
-        `<button type="button" onclick="insertText('v1Reasoning', '${v.en} ')" class="pill-chip px-2.5 py-1 rounded-full bg-white hover:bg-sky-100 border border-sky-200 text-xs font-semibold text-slate-800 shadow-sm transition">
+      const makeHtml = (taId) => VOCAB_BANK.map(v =>
+        `<button type="button" onclick="insertText('${taId}', '${v.en} ')" class="pill-chip px-2.5 py-1 rounded-full bg-white hover:bg-sky-100 border border-sky-200 text-xs font-semibold text-slate-800 shadow-sm transition">
           + <span class="text-sky-800">${v.en}</span> <span class="text-slate-500">(${v.zh})</span>
         </button>`
       ).join("");
-      const htmlV2 = VOCAB_BANK.map(v =>
-        `<button type="button" onclick="insertText('v2Reasoning', '${v.en} ')" class="pill-chip px-2.5 py-1 rounded-full bg-white hover:bg-sky-100 border border-sky-200 text-xs font-semibold text-slate-800 shadow-sm transition">
-          + <span class="text-sky-800">${v.en}</span> <span class="text-slate-500">(${v.zh})</span>
-        </button>`
-      ).join("");
-      document.getElementById("vocabBankV1").innerHTML = htmlV1;
-      document.getElementById("vocabBankV2").innerHTML = htmlV2;
+      document.getElementById("vocabBankV1").innerHTML = makeHtml("v1Reasoning");
+      document.getElementById("vocabBankV2").innerHTML = makeHtml("v2Reasoning");
     }
 
     function renderSentenceStarters() {
-      const container = document.getElementById("sentenceStartersV1");
-      container.innerHTML = SENTENCE_STARTERS.map((s, idx) =>
-        `<button type="button" onclick="insertStarter(${idx})" class="pill-chip px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-100 border border-emerald-300 text-xs font-bold text-emerald-900 shadow-sm transition">
+      const makeHtml = (taId) => SENTENCE_STARTERS.map((s, idx) =>
+        `<button type="button" onclick="insertStarter('${taId}', ${idx})" class="pill-chip px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-100 border border-emerald-300 text-xs font-bold text-emerald-900 shadow-sm transition">
           ＋ ${escHtml(s.label)}
         </button>`
       ).join("");
+      document.getElementById("sentenceStartersV1").innerHTML = makeHtml("v1Reasoning");
+      document.getElementById("sentenceStartersV2").innerHTML = makeHtml("v2Reasoning");
     }
 
-    function insertStarter(idx) {
-      insertText("v1Reasoning", SENTENCE_STARTERS[idx].text);
+    function insertStarter(taId, idx) {
+      insertText(taId, SENTENCE_STARTERS[idx].text);
     }
 
     function insertText(textareaId, text) {
       const ta = document.getElementById(textareaId);
-      const start = ta.selectionStart || ta.value.length;
-      const end = ta.selectionEnd || ta.value.length;
-      const before = ta.value.substring(0, start);
-      const after = ta.value.substring(end);
-      ta.value = before + text + after;
+      const start = ta.selectionStart ?? ta.value.length;
+      const end = ta.selectionEnd ?? ta.value.length;
+      ta.value = ta.value.substring(0, start) + text + ta.value.substring(end);
       ta.focus();
       const pos = start + text.length;
       ta.setSelectionRange(pos, pos);
@@ -1587,8 +1616,7 @@
                   <div class="text-[11px] text-slate-500">未知溶液 ${s}</div>
                 </div>
               </div>
-              <!-- Visual Litmus Strips Preview -->
-              <div class="flex items-center gap-1.5" title="Live Litmus Preview">
+              <div class="flex items-center gap-1.5">
                 <div class="litmus-strip">
                   <div class="litmus-top" style="background:#f43f5e;"></div>
                   <div class="litmus-bot" style="background:${d.redLitmus ? redBotColor : "#fda4af"};"></div>
@@ -1600,7 +1628,6 @@
               </div>
             </div>
 
-            <!-- Red Litmus Choice -->
             <div class="space-y-1">
               <div class="text-[11px] font-bold text-rose-700">Red Litmus Paper / 紅石蕊試紙</div>
               <div class="grid grid-cols-2 gap-1.5">
@@ -1615,7 +1642,6 @@
               </div>
             </div>
 
-            <!-- Blue Litmus Choice -->
             <div class="space-y-1">
               <div class="text-[11px] font-bold text-blue-700">Blue Litmus Paper / 藍石蕊試紙</div>
               <div class="grid grid-cols-2 gap-1.5">
@@ -1630,7 +1656,6 @@
               </div>
             </div>
 
-            <!-- Conclusion Selector -->
             <div class="space-y-1 pt-1 border-t border-slate-100">
               <div class="text-[11px] font-bold text-slate-700">Conclusion / 本組結論</div>
               <div class="grid grid-cols-3 gap-1">
@@ -1658,7 +1683,8 @@
       renderSamplesMatrix();
     }
 
-    function submitV1() {
+    async function submitV1() {
+      if (!student.classNo) { openLoginModal(); return; }
       const errEl = document.getElementById("v1ValidationMsg");
       for (const s of SAMPLES) {
         const d = v1Draft[s];
@@ -1668,15 +1694,11 @@
           return;
         }
       }
-      const reasoning = document.getElementById("v1Reasoning").value.trim();
-      if (reasoning.length < 10) {
-        errEl.textContent = "⚠️ Please write a short logical reasoning (tap vocabulary chips above to help!). / 請輸入簡短科學推論（可點擊上方詞彙輔助）。";
-        errEl.classList.remove("hidden");
-        return;
-      }
       errEl.classList.add("hidden");
 
-      const existing = (classData.groups && classData.groups[student.groupId]) || {};
+      const reasoning = document.getElementById("v1Reasoning").value.trim();
+      const classData = getClassData(student.className);
+      const existing = classData.groups[student.groupId] || {};
       const membersSet = new Set(existing.members || []);
       if (student.classNo) membersSet.add(student.classNo);
 
@@ -1689,7 +1711,8 @@
       const groupRecord = {
         groupId: student.groupId,
         members: Array.from(membersSet).sort(),
-        v1: existing.v1 ? existing.v1 : v1Payload, // Preserve original v1 once submitted!
+        socraticAnswer: existing.socraticAnswer || "",
+        v1: existing.v2 ? existing.v1 : v1Payload,
         v2: existing.v2 || null,
         current: existing.v2 ? existing.current : {
           samples: JSON.parse(JSON.stringify(v1Draft)),
@@ -1697,28 +1720,39 @@
         }
       };
 
-      // If teacher hasn't locked v1 re-save before v2, update v1 if no v2 yet
-      if (!existing.v2) {
-        groupRecord.v1 = v1Payload;
-        groupRecord.current = { samples: JSON.parse(JSON.stringify(v1Draft)), reasoning };
-      }
+      const btn = document.getElementById("btnSubmitV1");
+      btn.disabled = true;
+      btn.textContent = "⏳ Saving... / 儲存中...";
+      const ok = await writePath(student.className, `groups/${student.groupId}`, groupRecord);
+      btn.disabled = false;
+      btn.textContent = "☁️ Submit Step 1 Results / 提交本組實驗結果 (v1)";
 
-      writePath(student.className, `groups/${student.groupId}`, groupRecord);
-      showToast("✅ Trial 1 (v1) saved! Now check the Socratic Logic Check below.");
-      renderAutoLogicHint(v1Payload.samples);
-      document.getElementById("socraticCard").classList.remove("hidden");
-      document.getElementById("socraticCard").scrollIntoView({ behavior: "smooth" });
+      if (ok) {
+        v2DraftHydratedForKey = ""; // Allow Step 3 to pick up fresh Step 1 data
+        showToast(syncMode === "cloud"
+          ? "✅ 已同步至雲端資料庫！老師後台已可即時看到。"
+          : "✅ 已儲存至本機暫存！同瀏覽器老師分頁可即時看到。");
+        renderAutoLogicHint(v1Payload.samples);
+        document.getElementById("socraticCard").classList.remove("hidden");
+        document.getElementById("socraticCard").scrollIntoView({ behavior: "smooth" });
+      }
     }
 
     function syncOwnGroupUI() {
-      const grpData = classData.groups && classData.groups[student.groupId];
+      const classData = getClassData(student.className);
+      const grpData = classData.groups[student.groupId];
       const badge = document.getElementById("v1StatusBadge");
 
       if (grpData && grpData.v1) {
-        badge.textContent = grpData.v2 ? "✅ v1 Submitted & v2 Revised / 已完成修正" : "✅ Trial 1 (v1) Submitted / 已提交";
+        if (grpData.v2) {
+          badge.textContent = grpData.v2.mode === "confirm"
+            ? "✅ Step 1 Submitted & Confirmed / 已確認正確"
+            : "✅ v1 Submitted & v2 Revised / 已完成修正";
+        } else {
+          badge.textContent = "✅ Step 1 (v1) Submitted / 已提交";
+        }
         badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
 
-        // Populate v1Draft if untouched
         const anyEmpty = SAMPLES.some(s => !v1Draft[s].conclusion);
         if (anyEmpty) {
           v1Draft = JSON.parse(JSON.stringify(grpData.v1.samples));
@@ -1727,6 +1761,10 @@
         }
         renderAutoLogicHint(grpData.v1.samples);
         document.getElementById("socraticCard").classList.remove("hidden");
+
+        if (grpData.socraticAnswer) {
+          highlightSocraticUI(grpData.socraticAnswer);
+        }
       } else {
         badge.textContent = "尚未提交 / Not Submitted";
         badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600";
@@ -1735,12 +1773,11 @@
       renderV2Section();
     }
 
-    // Rule-based gentle logic checker (preserves Trial 1 without forcing answer)
     function expectedConclusionFromColors(redLitmus, blueLitmus) {
       if (redLitmus === "red" && blueLitmus === "red") return "acidic";
       if (redLitmus === "blue" && blueLitmus === "blue") return "alkaline";
       if (redLitmus === "red" && blueLitmus === "blue") return "neutral";
-      return "impossible"; // red->blue AND blue->red simultaneously
+      return "impossible";
     }
 
     function renderAutoLogicHint(samples) {
@@ -1750,24 +1787,23 @@
         const d = samples[s];
         const exp = expectedConclusionFromColors(d.redLitmus, d.blueLitmus);
         if (exp === "impossible") {
-          contradictions.push(`Solution ${s}: Red litmus turned blue AND blue litmus turned red—check if two strips were mixed up! / 溶液 ${s} 同時變藍又變紅，請檢查試紙紀錄！`);
+          contradictions.push(`Solution ${s}: Red litmus turned blue AND blue litmus turned red—check if strips were mixed up! / 溶液 ${s} 同時變藍又變紅，請檢查試紙紀錄！`);
         } else if (exp !== d.conclusion) {
-          contradictions.push(`Solution ${s}: Look closely at your two litmus colours vs your conclusion (${d.conclusion}). Do they match? / 請再對照溶液 ${s} 的紅、藍試紙顏色與結論是否一致！`);
+          contradictions.push(`Solution ${s}: Compare your litmus colours with your conclusion (${d.conclusion}). Do they match? / 請對照溶液 ${s} 的試紙顏色與結論是否一致！`);
         }
       });
 
       if (contradictions.length === 0) {
         box.className = "rounded-xl p-3.5 text-xs md:text-sm border bg-emerald-50 border-emerald-200 text-emerald-900";
-        box.innerHTML = `<b>✅ Logical Consistency Check / 邏輯一致性檢查：</b> Your A–E conclusions are internally consistent with the litmus colours you recorded! Next, check the Peer Wall to see if other groups observed the same colours. / 你們的結論與所記錄的試紙變色邏輯完全一致！下一步可到互評牆對比全班的觀察。`;
+        box.innerHTML = `<b>✅ Logical Consistency Check / 邏輯一致性檢查：</b> Your A–E conclusions match the litmus colours you recorded! Next, compare with other groups on the Peer Wall. / 你們的結論與所記錄的試紙變色邏輯完全一致！下一步可到互評牆對比全班的觀察。`;
       } else {
         box.className = "rounded-xl p-3.5 text-xs md:text-sm border bg-amber-50 border-amber-300 text-amber-950 space-y-1";
-        box.innerHTML = `<b>🤔 Friendly Logic Clue (容錯提示 — 不扣分！)：</b><ul class="list-disc pl-5 mt-1 space-y-1">${contradictions.map(c => `<li>${escHtml(c)}</li>`).join("")}</ul><p class="text-xs text-amber-800 mt-1">Discuss with your group and refine in Step 3 (Visible Growth)!</p>`;
+        box.innerHTML = `<b>🤔 Friendly Logic Clue (容錯提示 — 不扣分！)：</b><ul class="list-disc pl-5 mt-1 space-y-1">${contradictions.map(c => `<li>${escHtml(c)}</li>`).join("")}</ul>`;
       }
     }
 
     function renderSocraticOptions() {
-      const container = document.getElementById("socraticOptions");
-      container.innerHTML = SOCRATIC_OPTIONS.map(o =>
+      document.getElementById("socraticOptions").innerHTML = SOCRATIC_OPTIONS.map(o =>
         `<button type="button" onclick="selectSocratic('${o.id}')" id="socOpt_${o.id}"
           class="touch-btn text-left p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-indigo-50 transition">
           <div class="text-xs md:text-sm font-bold text-slate-900">${o.id}. ${escHtml(o.en)}</div>
@@ -1776,10 +1812,12 @@
       ).join("");
     }
 
-    function selectSocratic(id) {
+    function highlightSocraticUI(id) {
       const opt = SOCRATIC_OPTIONS.find(o => o.id === id);
+      if (!opt) return;
       SOCRATIC_OPTIONS.forEach(o => {
         const btn = document.getElementById(`socOpt_${o.id}`);
+        if (!btn) return;
         btn.className = "touch-btn text-left p-3 rounded-xl border transition " +
           (o.id === id
             ? (o.correct ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200" : "border-amber-500 bg-amber-50 ring-2 ring-amber-200")
@@ -1793,8 +1831,15 @@
       fb.textContent = opt.feedback;
     }
 
+    function selectSocratic(id) {
+      highlightSocraticUI(id);
+      if (student.classNo) {
+        writePath(student.className, `groups/${student.groupId}/socraticAnswer`, id);
+      }
+    }
+
     // =========================================================
-    // STEP 2: PEER EXHIBITION & APPRECIATION WALL
+    // STEP 2: PEER WALL
     // =========================================================
     function conclusionBadgeHtml(c) {
       if (c === "acidic") return `<span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">Acidic 酸</span>`;
@@ -1810,22 +1855,17 @@
     }
 
     function renderPeerWall() {
-      const locked = classData.control && classData.control.peerWallUnlocked === false;
-      const lockedBox = document.getElementById("peerWallLockedBox");
+      const classData = getClassData(student.className);
+      const locked = classData.control.peerWallUnlocked === false;
+      document.getElementById("peerWallLockedBox").classList.toggle("hidden", !locked);
       const grid = document.getElementById("peerWallGrid");
+      grid.classList.toggle("hidden", locked);
+      if (locked) return;
 
-      if (locked) {
-        lockedBox.classList.remove("hidden");
-        grid.classList.add("hidden");
-        return;
-      }
-      lockedBox.classList.add("hidden");
-      grid.classList.remove("hidden");
-
-      const groupsObj = classData.groups || {};
-      const reviewsObj = classData.peerReviews || {};
+      const groupsObj = classData.groups;
+      const reviewsObj = classData.peerReviews;
       const likerKey = `${student.groupId}_${student.classNo}`;
-      const isAnon = classData.control && classData.control.anonymousMode;
+      const isAnon = classData.control.anonymousMode;
 
       grid.innerHTML = ALL_GROUPS.map((gName, idx) => {
         const g = groupsObj[gName];
@@ -1859,6 +1899,16 @@
           `;
         }).join("");
 
+        const statusPill = g.v2
+          ? (g.v2.mode === "confirm"
+              ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">✅ Confirmed</span>'
+              : '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">🌱 v2 Revised</span>')
+          : '<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">v1 Trial</span>';
+
+        const reasoningText = (activeData.reasoning || "").trim()
+          ? escHtml(activeData.reasoning)
+          : `<span class="italic text-slate-400">(Conclusion pending in Step 3 / 尚未填寫文字結論，將於 Step 3 補寫)</span>`;
+
         const commentsHtml = comments.length
           ? comments.map(c => `
               <div class="bg-slate-50 rounded-lg p-2 text-xs border border-slate-100">
@@ -1869,7 +1919,7 @@
                 ${c.text ? `<p class="text-slate-600 mt-1">${escHtml(c.text)}</p>` : ""}
               </div>
             `).join("")
-          : `<p class="text-[11px] text-slate-400 italic">No peer comments yet. Be the first to encourage or ask! / 暫未有互評，歡迎留下鼓勵或提問。</p>`;
+          : `<p class="text-[11px] text-slate-400 italic">No peer comments yet. / 暫未有互評，歡迎留下鼓勵或提問。</p>`;
 
         const quickTagButtons = PEER_QUICK_TAGS.map((t, tIdx) =>
           `<button type="button" onclick="postQuickTag('${gName}', ${tIdx})" class="px-2 py-1 rounded-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-[10px] font-semibold text-purple-900 transition">
@@ -1881,10 +1931,10 @@
           <div class="bg-white rounded-2xl border-2 ${isOwn ? 'border-sky-400' : 'border-slate-200'} p-4 shadow-sm flex flex-col justify-between space-y-3">
             <div class="space-y-2.5">
               <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <span class="px-2.5 py-1 rounded-xl bg-slate-900 text-white font-bold text-xs">${escHtml(displayName)}</span>
                   ${isOwn ? '<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-bold">本組 My Group</span>' : ''}
-                  ${g.v2 ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">🌱 v2 Revised</span>' : '<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">v1 Trial</span>'}
+                  ${statusPill}
                 </div>
                 <button type="button" onclick="togglePeerLike('${gName}')"
                   class="touch-btn px-3 py-1 rounded-xl text-xs font-bold border transition ${iLiked ? 'bg-amber-400 text-slate-900 border-amber-500 shadow-sm' : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'}">
@@ -1892,17 +1942,14 @@
                 </button>
               </div>
 
-              <!-- A-E Compact Grid -->
               <div class="grid grid-cols-5 gap-1.5">${samplesRow}</div>
 
-              <!-- Reasoning Quote -->
               <div class="bg-sky-50/60 border border-sky-100 rounded-xl p-2.5">
-                <div class="text-[10px] font-bold uppercase tracking-wide text-sky-800 mb-0.5">💡 Group Reasoning / 推論結論</div>
-                <p class="text-xs text-slate-700 leading-relaxed">${escHtml(activeData.reasoning)}</p>
+                <div class="text-[10px] font-bold uppercase tracking-wide text-sky-800 mb-0.5">💡 Group Conclusion / 推論結論</div>
+                <p class="text-xs text-slate-700 leading-relaxed">${reasoningText}</p>
               </div>
             </div>
 
-            <!-- Peer Comments & Quick Reaction Box -->
             <div class="pt-2 border-t border-slate-100 space-y-2">
               <div class="space-y-1.5 max-h-32 overflow-y-auto">${commentsHtml}</div>
               <div class="flex flex-wrap gap-1">${quickTagButtons}</div>
@@ -1922,21 +1969,18 @@
 
     function togglePeerLike(targetGroup) {
       if (!student.classNo) { openLoginModal(); return; }
+      const classData = getClassData(student.className);
       const likerKey = `${student.groupId}_${student.classNo}`;
-      const rev = (classData.peerReviews && classData.peerReviews[targetGroup]) || { likes: {}, comments: [] };
+      const rev = classData.peerReviews[targetGroup] || { likes: {}, comments: [] };
       const likes = Object.assign({}, rev.likes || {});
-      if (likes[likerKey]) {
-        delete likes[likerKey];
-      } else {
-        likes[likerKey] = true;
-      }
+      if (likes[likerKey]) delete likes[likerKey];
+      else likes[likerKey] = true;
       writePath(student.className, `peerReviews/${targetGroup}/likes`, likes);
     }
 
     function postQuickTag(targetGroup, tagIdx) {
       if (!student.classNo) { openLoginModal(); return; }
-      const tag = PEER_QUICK_TAGS[tagIdx].label;
-      appendPeerComment(targetGroup, tag, "");
+      appendPeerComment(targetGroup, PEER_QUICK_TAGS[tagIdx].label, "");
     }
 
     function postPeerComment(targetGroup, idx) {
@@ -1949,7 +1993,8 @@
     }
 
     function appendPeerComment(targetGroup, tag, text) {
-      const rev = (classData.peerReviews && classData.peerReviews[targetGroup]) || { likes: {}, comments: [] };
+      const classData = getClassData(student.className);
+      const rev = classData.peerReviews[targetGroup] || { likes: {}, comments: [] };
       const list = Array.isArray(rev.comments) ? rev.comments.slice() : Object.values(rev.comments || {});
       list.push({
         id: "c_" + Date.now(),
@@ -1960,19 +2005,52 @@
         time: Date.now()
       });
       writePath(student.className, `peerReviews/${targetGroup}/comments`, list);
-      showToast("💬 Feedback posted to Peer Wall! / 已發佈互評回應！");
+      showToast("💬 Feedback posted! / 已發佈互評回應！");
     }
 
     // =========================================================
-    // STEP 3: VISIBLE GROWTH (v1 -> v2 REVISION)
+    // STEP 3: FLEXIBLE CONFIRMATION (NO FORCED EDIT) OR REVISION
     // =========================================================
+    function setStep3Mode(mode) {
+      step3Mode = mode;
+      const btnConfirm = document.getElementById("btnModeConfirm");
+      const btnRevise = document.getElementById("btnModeRevise");
+      const previewBox = document.getElementById("step3ConfirmPreview");
+      const reviseFields = document.getElementById("step3ReviseFields");
+      const label = document.getElementById("step3ConclusionLabel");
+      const submitBtn = document.getElementById("btnSubmitStep3");
+
+      if (mode === "confirm") {
+        btnConfirm.className = "touch-btn text-left p-4 rounded-2xl border-2 border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm transition";
+        btnRevise.className = "touch-btn text-left p-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition";
+        previewBox.classList.remove("hidden");
+        reviseFields.classList.add("hidden");
+        label.textContent = "✍️ Step 1 Conclusion / 確認或試寫 Step 1 結論（無需修改實驗結果，可直接確認或在此寫下完整結論）：";
+        submitBtn.textContent = "✅ Confirm Experiment Correct & Save Conclusion / 確認實驗正確並儲存結論";
+      } else {
+        btnConfirm.className = "touch-btn text-left p-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition";
+        btnRevise.className = "touch-btn text-left p-4 rounded-2xl border-2 border-sky-600 bg-sky-50 text-sky-950 shadow-sm transition";
+        previewBox.classList.add("hidden");
+        reviseFields.classList.remove("hidden");
+        label.textContent = "✍️ Revised Conclusion & Reflection / 修正後的結論與反思 (v2)：";
+        submitBtn.textContent = "🌱 Save Revision & Generate Growth Card / 儲存修正並生成成長見證卡 (v2)";
+      }
+    }
+
+    function copyStep1ConclusionToStep3() {
+      const grpData = getClassData(student.className).groups[student.groupId];
+      if (grpData && grpData.v1) {
+        document.getElementById("v2Reasoning").value = grpData.v1.reasoning || "";
+        showToast("↩ 已載入 Step 1 結論原文");
+      }
+    }
+
     function renderMistakeChips() {
-      const container = document.getElementById("mistakeChips");
-      container.innerHTML = MISTAKE_TAGS.map(m => {
+      document.getElementById("mistakeChips").innerHTML = MISTAKE_TAGS.map(m => {
         const active = selectedMistakeTags.includes(m.id);
         return `
           <button type="button" onclick="toggleMistakeTag('${m.id}')"
-            class="pill-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition ${active ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50'}">
+            class="pill-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition ${active ? 'bg-sky-600 text-white border-sky-700 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-sky-50'}">
             ${escHtml(m.label)}
           </button>
         `;
@@ -1980,17 +2058,13 @@
     }
 
     function toggleMistakeTag(id) {
-      if (selectedMistakeTags.includes(id)) {
-        selectedMistakeTags = selectedMistakeTags.filter(x => x !== id);
-      } else {
-        selectedMistakeTags.push(id);
-      }
+      if (selectedMistakeTags.includes(id)) selectedMistakeTags = selectedMistakeTags.filter(x => x !== id);
+      else selectedMistakeTags.push(id);
       renderMistakeChips();
     }
 
     function renderV2SamplesMatrix() {
-      const container = document.getElementById("v2SamplesMatrix");
-      container.innerHTML = SAMPLES.map(s => {
+      document.getElementById("v2SamplesMatrix").innerHTML = SAMPLES.map(s => {
         const d = v2Draft[s];
         return `
           <div class="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-2">
@@ -2023,7 +2097,7 @@
     }
 
     function renderV2Section() {
-      const grpData = classData.groups && classData.groups[student.groupId];
+      const grpData = getClassData(student.className).groups[student.groupId];
       const needNotice = document.getElementById("v2NeedV1Notice");
       const workspace = document.getElementById("v2Workspace");
       const growthCard = document.getElementById("growthSummaryCard");
@@ -2036,12 +2110,30 @@
       needNotice.classList.add("hidden");
       workspace.classList.remove("hidden");
 
-      // Seed v2Draft from current/v1 if empty
-      if (SAMPLES.some(s => !v2Draft[s].conclusion)) {
+      // Render Mode A read-only Step 1 A-E preview
+      document.getElementById("step3ReadonlySamples").innerHTML = SAMPLES.map(s => {
+        const item = grpData.v1.samples[s];
+        return `
+          <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-center space-y-1">
+            <div class="font-extrabold text-xs text-slate-800">Solution ${s}</div>
+            <div class="text-xs">${colorArrowText(item)}</div>
+            <div>${conclusionBadgeHtml(item.conclusion)}</div>
+          </div>
+        `;
+      }).join("");
+
+      const hydrateKey = `${student.className}_${student.groupId}_${grpData.v1.submittedAt}_${grpData.v2 ? grpData.v2.revisedAt : "nov2"}`;
+      if (v2DraftHydratedForKey !== hydrateKey) {
+        v2DraftHydratedForKey = hydrateKey;
         const src = grpData.v2 ? grpData.v2 : grpData.v1;
         v2Draft = JSON.parse(JSON.stringify(src.samples));
-        document.getElementById("v2Reasoning").value = src.reasoning || "";
+        document.getElementById("v2Reasoning").value = src.reasoning || grpData.v1.reasoning || "";
         selectedMistakeTags = (grpData.v2 && grpData.v2.mistakeTags) ? grpData.v2.mistakeTags.slice() : [];
+        if (grpData.v2 && grpData.v2.mode) {
+          setStep3Mode(grpData.v2.mode);
+        } else {
+          setStep3Mode("confirm");
+        }
         renderMistakeChips();
         renderV2SamplesMatrix();
       }
@@ -2054,48 +2146,69 @@
       }
     }
 
-    function submitV2() {
-      const grpData = classData.groups && classData.groups[student.groupId];
+    async function submitV2() {
+      const grpData = getClassData(student.className).groups[student.groupId];
       if (!grpData || !grpData.v1) return;
 
+      const errEl = document.getElementById("v2ValidationMsg");
       const reasoning = document.getElementById("v2Reasoning").value.trim();
-      if (selectedMistakeTags.length === 0) {
-        showToast("⚠️ Please select at least one Reflection Tag! / 請至少選擇一個反思標籤！");
+
+      if (reasoning.length < 3) {
+        errEl.textContent = "⚠️ Please write or confirm your Step 1 conclusion (you can tap the vocabulary chips above!). / 請填寫或確認本組結論（可點擊上方詞彙輔助）。";
+        errEl.classList.remove("hidden");
         return;
       }
-      if (reasoning.length < 8) {
-        showToast("⚠️ Please write your refined reasoning! / 請寫下修正或確認後的推論！");
-        return;
-      }
+      errEl.classList.add("hidden");
+
+      // In Mode A ("confirm"), keep Step 1 A-E samples untouched — NO forced edits!
+      const finalSamples = step3Mode === "confirm"
+        ? JSON.parse(JSON.stringify(grpData.v1.samples))
+        : JSON.parse(JSON.stringify(v2Draft));
+
+      const finalTags = step3Mode === "confirm"
+        ? ["confirmed_correct"]
+        : (selectedMistakeTags.length ? selectedMistakeTags.slice() : ["revised_conclusion"]);
 
       const v2Payload = {
-        samples: JSON.parse(JSON.stringify(v2Draft)),
+        mode: step3Mode,
+        samples: finalSamples,
         reasoning,
-        mistakeTags: selectedMistakeTags.slice(),
+        mistakeTags: finalTags,
         revisedAt: Date.now()
       };
 
       const updated = Object.assign({}, grpData, {
         v2: v2Payload,
-        current: {
-          samples: JSON.parse(JSON.stringify(v2Draft)),
-          reasoning
-        }
+        current: { samples: finalSamples, reasoning }
       });
 
-      writePath(student.className, `groups/${student.groupId}`, updated);
-      showToast("🌱 Visible Growth Card generated! / 成長見證卡已生成！");
+      const ok = await writePath(student.className, `groups/${student.groupId}`, updated);
+      if (ok) {
+        showToast(step3Mode === "confirm"
+          ? "✅ 已確認實驗結果正確並儲存結論！"
+          : "🌱 已儲存修正並生成成長見證卡！");
+      }
     }
 
     function renderGrowthSummaryCard(grpData) {
       const v1 = grpData.v1;
       const v2 = grpData.v2;
+      const isConfirm = v2.mode === "confirm";
       const changed = SAMPLES.filter(s => v1.samples[s].conclusion !== v2.samples[s].conclusion);
 
+      document.getElementById("growthCardBadge").textContent = isConfirm
+        ? "✅ Confirmed Accurate"
+        : (changed.length > 0 ? `🌱 Revised ${changed.length} Sample(s)` : "🌱 Strengthened Conclusion");
+
       document.getElementById("growthCardSubtitle").textContent =
-        `${student.className} · ${student.groupId} | ${changed.length > 0 ? `Revised ${changed.length} solution(s): ${changed.join(", ")}` : "Verified & strengthened scientific reasoning!"}`;
+        `${student.className} · ${student.groupId} | ` +
+        (isConfirm
+          ? "Confirmed Trial 1 experiment accurate & finalized Step 1 conclusion!"
+          : (changed.length > 0 ? `Revised ${changed.join(", ")} after comparison!` : "Verified A–E & refined scientific reasoning!"));
 
       const tagLabels = (v2.mistakeTags || []).map(id => {
+        if (id === "confirmed_correct") return "✅ 已確認實驗正確 / Confirmed Correct";
+        if (id === "revised_conclusion") return "✍️ 完善推論 / Refined Conclusion";
         const found = MISTAKE_TAGS.find(m => m.id === id);
         return found ? found.label : id;
       });
@@ -2108,19 +2221,19 @@
 
       document.getElementById("growthComparisonBody").innerHTML = `
         <div class="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2">
-          <div class="text-xs font-extrabold text-slate-500 uppercase">Before · Trial 1 (v1)</div>
+          <div class="text-xs font-extrabold text-slate-500 uppercase">Step 1 · Trial 1 (v1)</div>
           <div class="flex flex-wrap">${listV1}</div>
-          <p class="text-xs text-slate-600 italic">"${escHtml(v1.reasoning)}"</p>
+          <p class="text-xs text-slate-600 italic">${v1.reasoning ? `"${escHtml(v1.reasoning)}"` : "(Observations recorded first / 先記錄實驗現象)"}</p>
         </div>
         <div class="bg-amber-50/70 rounded-xl border border-amber-200 p-3.5 space-y-2">
-          <div class="text-xs font-extrabold text-amber-800 uppercase">Reflection / 反思契機</div>
+          <div class="text-xs font-extrabold text-amber-800 uppercase">Verification / 驗證與反思</div>
           <div class="flex flex-wrap gap-1.5">
             ${tagLabels.map(t => `<span class="px-2 py-0.5 rounded-full bg-white border border-amber-300 text-[11px] font-bold text-amber-900">${escHtml(t)}</span>`).join("")}
           </div>
-          <p class="text-xs text-amber-900">Comparing evidence with classmates makes our scientific model stronger! / 透過比對證據，讓我們的推論更嚴密！</p>
+          <p class="text-xs text-amber-900">${isConfirm ? "Double-checking with classmates confirms our evidence is reliable! / 與全班比對後確認實驗可靠！" : "Updating our conclusion based on evidence is visible scientific growth! / 依據證據修正想法是看得見的成長！"}</p>
         </div>
         <div class="bg-emerald-50/80 rounded-xl border-2 border-emerald-300 p-3.5 space-y-2">
-          <div class="text-xs font-extrabold text-emerald-800 uppercase">After · Final (v2)</div>
+          <div class="text-xs font-extrabold text-emerald-800 uppercase">${isConfirm ? "Final Confirmed Conclusion" : "Revised Final (v2)"}</div>
           <div class="flex flex-wrap">${listV2}</div>
           <p class="text-xs text-emerald-950 font-medium">"${escHtml(v2.reasoning)}"</p>
         </div>
@@ -2128,17 +2241,16 @@
     }
 
     // =========================================================
-    // STEP 4: FINAL 5-MIN DELIBERATE PRACTICE MC QUIZ
+    // STEP 4: FINAL 5-MIN MC QUIZ
     // =========================================================
     function updateQuizLockState() {
-      const unlocked = classData.control && classData.control.quizUnlocked === true;
+      const unlocked = getClassData(student.className).control.quizUnlocked === true;
       document.getElementById("quizLockedBox").classList.toggle("hidden", unlocked);
       document.getElementById("quizActiveBox").classList.toggle("hidden", !unlocked);
     }
 
     function renderQuizQuestions() {
-      const container = document.getElementById("quizQuestionsContainer");
-      container.innerHTML = QUIZ_QUESTIONS.map((q, idx) => `
+      document.getElementById("quizQuestionsContainer").innerHTML = QUIZ_QUESTIONS.map(q => `
         <div class="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 shadow-sm space-y-3" id="quizCard_${q.id}">
           <div>
             <div class="text-sm md:text-base font-bold text-slate-900">${escHtml(q.en)}</div>
@@ -2159,8 +2271,8 @@
     }
 
     function selectQuizOption(qId, key) {
-      // Prevent changing after submission
-      if (classData.quizzes && classData.quizzes[student.classNo]) return;
+      const classData = getClassData(student.className);
+      if (classData.quizzes[student.classNo]) return;
       selectedQuizAnswers[qId] = key;
       const q = QUIZ_QUESTIONS.find(x => x.id === qId);
       q.options.forEach(opt => {
@@ -2172,12 +2284,12 @@
       });
     }
 
-    function submitQuiz() {
+    async function submitQuiz() {
       if (!student.classNo) { openLoginModal(); return; }
       const err = document.getElementById("quizValidationMsg");
       for (const q of QUIZ_QUESTIONS) {
         if (!selectedQuizAnswers[q.id]) {
-          err.textContent = `⚠️ Please answer all 5 questions before submitting! / 請先完成全部 5 題才提交！`;
+          err.textContent = "⚠️ Please answer all 5 questions before submitting! / 請先完成全部 5 題才提交！";
           err.classList.remove("hidden");
           return;
         }
@@ -2185,9 +2297,7 @@
       err.classList.add("hidden");
 
       let score = 0;
-      QUIZ_QUESTIONS.forEach(q => {
-        if (selectedQuizAnswers[q.id] === q.answer) score++;
-      });
+      QUIZ_QUESTIONS.forEach(q => { if (selectedQuizAnswers[q.id] === q.answer) score++; });
 
       const payload = {
         classNo: student.classNo,
@@ -2198,12 +2308,13 @@
         submittedAt: Date.now()
       };
 
-      writePath(student.className, `quizzes/${student.classNo}`, payload);
-      showToast(`🎯 Quiz submitted! Score: ${score}/${QUIZ_QUESTIONS.length}`);
+      const ok = await writePath(student.className, `quizzes/${student.classNo}`, payload);
+      if (ok) showToast(`🎯 Quiz submitted! Score: ${score}/${QUIZ_QUESTIONS.length}`);
     }
 
     function restoreOwnQuizIfSubmitted() {
-      const myQuiz = classData.quizzes && student.classNo && classData.quizzes[student.classNo];
+      const classData = getClassData(student.className);
+      const myQuiz = student.classNo && classData.quizzes[student.classNo];
       const submitBar = document.getElementById("quizSubmitBar");
       const banner = document.getElementById("quizResultBanner");
 
@@ -2254,7 +2365,7 @@
             <p class="text-xs md:text-sm text-slate-700 mt-1">
               ${pct >= 80
                 ? "🌟 Outstanding mastery of Acid & Alkali litmus logic! / 非常出色！你已穩固掌握紅藍石蕊推論邏輯！"
-                : "🌱 Great effort! Read the explanations above—every mistake spotted now makes you stronger for exams! / 做得好！仔細閱讀上方詳解，現在發現的每個誤區都是進步的契機！"}
+                : "🌱 Great effort! Review the explanations above—every misconception caught now makes you stronger! / 做得好！閱讀上方詳解，現在釐清的每個誤區都是進步的契機！"}
             </p>
           </div>
           <span class="text-4xl">${pct >= 80 ? "🏆" : "📈"}</span>
@@ -2263,11 +2374,10 @@
     }
 
     // =========================================================
-    // TEACHER PANEL AUTH & CONTROLS
+    // TEACHER PANEL AUTH, CLASS PILLS & ANALYTICS
     // =========================================================
     function handleTeacherToggle() {
       if (currentView === "teacher") {
-        // Return to student view
         currentView = "student";
         document.getElementById("teacherPanel").classList.add("hidden");
         document.getElementById("studentPanel").classList.remove("hidden");
@@ -2275,7 +2385,7 @@
         document.getElementById("viewRoleBadge").textContent = "STUDENT VIEW";
         document.getElementById("viewRoleBadge").className = "text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-400/25 border border-emerald-300/40 text-emerald-100";
         document.getElementById("teacherToggleBtn").textContent = "🔒 老師後台 / Teacher";
-        subscribeToClass(student.className);
+        onDataUpdated();
       } else {
         document.getElementById("teacherPwdInput").value = "";
         document.getElementById("teacherPwdError").classList.add("hidden");
@@ -2287,8 +2397,7 @@
     }
 
     function verifyTeacherPassword() {
-      const val = document.getElementById("teacherPwdInput").value;
-      if (val !== TEACHER_PWD) {
+      if (document.getElementById("teacherPwdInput").value !== TEACHER_PWD) {
         document.getElementById("teacherPwdError").classList.remove("hidden");
         return;
       }
@@ -2301,25 +2410,29 @@
       document.getElementById("viewRoleBadge").className = "text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/30 border border-amber-300/50 text-amber-100";
       document.getElementById("teacherToggleBtn").textContent = "↩ 返回學生介面 / Student View";
 
-      document.getElementById("teacherClassSelect").value = teacherClass;
-      subscribeToClass(teacherClass);
+      // Smart default: if current teacherClass has 0 submissions, auto-focus any class that DOES have submissions!
+      const curSubs = Object.keys(getClassData(teacherClass).groups).filter(g => getClassData(teacherClass).groups[g]?.v1).length;
+      if (curSubs === 0) {
+        const activeOther = CLASSES.find(c => Object.keys(getClassData(c).groups).filter(g => getClassData(c).groups[g]?.v1).length > 0);
+        if (activeOther) teacherClass = activeOther;
+      }
       renderTeacherPanel();
     }
 
     function changeTeacherClass(cls) {
       teacherClass = cls;
-      subscribeToClass(cls);
+      renderTeacherPanel();
     }
 
     function toggleControl(key) {
-      const cur = !!(classData.control && classData.control[key]);
+      const cur = !!(getClassData(teacherClass).control[key]);
       writePath(teacherClass, `control/${key}`, !cur);
     }
 
     function pushFocusPrompt() {
       const txt = document.getElementById("teacherFocusInput").value.trim();
       writePath(teacherClass, "control/focusPrompt", txt);
-      showToast("📢 Focus prompt pushed to all student iPads!");
+      showToast("📢 Focus prompt pushed to class!");
     }
 
     function clearFocusPrompt() {
@@ -2345,21 +2458,38 @@
       renderTeacherPanel();
     }
 
+    function renderTeacherClassPills() {
+      const container = document.getElementById("teacherClassPills");
+      container.innerHTML = CLASSES.map(c => {
+        const cd = getClassData(c);
+        const cnt = Object.keys(cd.groups).filter(g => cd.groups[g]?.v1).length;
+        const active = c === teacherClass;
+        return `
+          <button type="button" onclick="changeTeacherClass('${c}')"
+            class="px-3 py-1.5 rounded-xl text-xs font-bold border transition ${active ? 'bg-sky-800 text-white border-sky-900 shadow-sm' : (cnt > 0 ? 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200')}">
+            ${c} <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] ${active ? 'bg-white/20 text-white' : (cnt > 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-600')}">${cnt}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
     function renderTeacherPanel() {
-      const groupsObj = classData.groups || {};
-      const quizzesObj = classData.quizzes || {};
-      const ctrl = classData.control || {};
+      renderTeacherClassPills();
+      const classData = getClassData(teacherClass);
+      const groupsObj = classData.groups;
+      const quizzesObj = classData.quizzes;
+      const ctrl = classData.control;
 
       const submittedGroups = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1);
-      const revisedGroups = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v2);
+      const step3Groups = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v2);
       const quizList = Object.values(quizzesObj);
 
       document.getElementById("tStatSubmitted").textContent = `${submittedGroups.length}/8`;
-      document.getElementById("tStatRevised").textContent = `${revisedGroups.length}`;
+      document.getElementById("tStatRevised").textContent = `${step3Groups.length}`;
       document.getElementById("tStatQuiz").textContent = `${quizList.length}`;
+      document.getElementById("teacherActiveClassTag").textContent = `Viewing: ${teacherClass}`;
       document.getElementById("teacherFocusInput").value = ctrl.focusPrompt || "";
 
-      // Update pacing toggle button styles
       styleToggleBtn("btnTogglePeerWall", ctrl.peerWallUnlocked !== false, "🔓 Peer Wall: OPEN", "🔒 Peer Wall: LOCKED");
       styleToggleBtn("btnToggleQuiz", ctrl.quizUnlocked === true, "🔓 5-Min Quiz: OPEN", "🔒 5-Min Quiz: LOCKED");
       styleToggleBtn("btnToggleAnon", ctrl.anonymousMode === true, "🕵️ 匿名投影 Anonymous: ON", "🕵️ 匿名投影 Anonymous: OFF");
@@ -2378,21 +2508,19 @@
       const btn = document.getElementById(id);
       btn.textContent = isOn ? onText : offText;
       btn.className = "touch-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition " +
-        (isOn
-          ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
-          : "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200");
+        (isOn ? "bg-emerald-600 text-white border-emerald-700 shadow-sm" : "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200");
     }
 
     // =========================================================
-    // TEACHER SMART CONFLICT DETECTOR (CORE ANALYTICS)
+    // SMART CONFLICT DETECTOR & MATRIX
     // =========================================================
     function analyzeConflicts() {
-      const groupsObj = classData.groups || {};
+      const groupsObj = getClassData(teacherClass).groups;
       const submitted = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1);
       const alerts = [];
 
       SAMPLES.forEach(s => {
-        const byColorPair = {}; // key: "red|blue" -> [ { groupId, conclusion, reasoning, item } ]
+        const byColorPair = {};
         const selfContradictions = [];
 
         submitted.forEach(gName => {
@@ -2400,52 +2528,29 @@
           const item = active.samples[s];
           const colorKey = `${item.redLitmus}|${item.blueLitmus}`;
           if (!byColorPair[colorKey]) byColorPair[colorKey] = [];
-          byColorPair[colorKey].push({
-            groupId: gName,
-            conclusion: item.conclusion,
-            reasoning: active.reasoning,
-            item
-          });
+          byColorPair[colorKey].push({ groupId: gName, conclusion: item.conclusion, reasoning: active.reasoning || "", item });
 
           const expected = expectedConclusionFromColors(item.redLitmus, item.blueLitmus);
           if (expected !== item.conclusion) {
-            selfContradictions.push({ groupId: gName, item, expected, reasoning: active.reasoning });
+            selfContradictions.push({ groupId: gName, item, expected, reasoning: active.reasoning || "" });
           }
         });
 
-        // Type 1: SAME COLOUR OBSERVED, DIFFERENT CONCLUSION (Highest Pedagogical Priority!)
         Object.keys(byColorPair).forEach(colorKey => {
           const entries = byColorPair[colorKey];
           const uniqueConclusions = [...new Set(entries.map(e => e.conclusion))];
           if (uniqueConclusions.length > 1) {
-            alerts.push({
-              type: "same_color_diff_conclusion",
-              sample: s,
-              colorKey,
-              entries,
-              uniqueConclusions
-            });
+            alerts.push({ type: "same_color_diff_conclusion", sample: s, colorKey, entries, uniqueConclusions });
           }
         });
 
-        // Type 2: EXPERIMENTAL DISCREPANCY (Different litmus colours observed across groups)
         const distinctColorKeys = Object.keys(byColorPair);
         if (distinctColorKeys.length > 1) {
-          alerts.push({
-            type: "experimental_discrepancy",
-            sample: s,
-            byColorPair,
-            distinctColorKeys
-          });
+          alerts.push({ type: "experimental_discrepancy", sample: s, byColorPair, distinctColorKeys });
         }
 
-        // Type 3: Single-group self-contradiction (even if no other group matched its colour)
         if (selfContradictions.length > 0 && !alerts.some(a => a.type === "same_color_diff_conclusion" && a.sample === s)) {
-          alerts.push({
-            type: "self_contradiction",
-            sample: s,
-            selfContradictions
-          });
+          alerts.push({ type: "self_contradiction", sample: s, selfContradictions });
         }
       });
 
@@ -2453,7 +2558,7 @@
     }
 
     function getDisplayGroupName(gName) {
-      const isAnon = classData.control && classData.control.anonymousMode;
+      const isAnon = getClassData(teacherClass).control.anonymousMode;
       if (!isAnon) return gName;
       const idx = ALL_GROUPS.indexOf(gName);
       return idx >= 0 ? ANON_LABELS[idx] : gName;
@@ -2461,14 +2566,25 @@
 
     function renderSmartConflictDetector() {
       const container = document.getElementById("conflictAlertsContainer");
+      const groupsObj = getClassData(teacherClass).groups;
+      const submittedCount = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1).length;
       const alerts = analyzeConflicts();
       window.__latestAlerts = alerts;
+
+      if (submittedCount === 0) {
+        container.innerHTML = `
+          <div class="lg:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs md:text-sm text-slate-600 flex flex-wrap items-center justify-between gap-2">
+            <span>⏳ <b>${escHtml(teacherClass)}</b> 暫未有組別提交實驗數據。學生提交後會即時出現，或可點擊「✨ 模擬補位」測試診斷效果。</span>
+          </div>
+        `;
+        return;
+      }
 
       if (alerts.length === 0) {
         container.innerHTML = `
           <div class="lg:col-span-2 bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-900 font-semibold flex items-center gap-2">
             <span>✅</span>
-            <span>All submitted groups currently agree on both litmus observations and conclusions for Solutions A–E! / 所有已提交組別在 A–E 的實驗現象及結論目前完全一致！</span>
+            <span>All ${submittedCount} submitted group(s) in ${escHtml(teacherClass)} agree on both litmus colours and conclusions! / 所有已提交組別的現象及結論目前完全一致！</span>
           </div>
         `;
         return;
@@ -2482,7 +2598,6 @@
             const gs = a.entries.filter(e => e.conclusion === concl).map(e => getDisplayGroupName(e.groupId)).join(", ");
             return `<div>• <b>${escHtml(gs)}</b> → ${conclusionBadgeHtml(concl)}</div>`;
           }).join("");
-
           return `
             <div class="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 space-y-2.5 shadow-sm">
               <div class="flex items-start justify-between gap-2">
@@ -2510,7 +2625,6 @@
             const gs = a.byColorPair[ck].map(e => getDisplayGroupName(e.groupId)).join(", ");
             return `<div>• <b>${escHtml(gs)}</b> observed <b>${colorArrowText({ redLitmus: r, blueLitmus: b })}</b></div>`;
           }).join("");
-
           return `
             <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 space-y-2.5 shadow-sm">
               <div class="flex items-start justify-between gap-2">
@@ -2525,14 +2639,13 @@
                 </button>
               </div>
               <div class="text-xs text-amber-950 space-y-1 bg-white/80 rounded-xl p-2.5 border border-amber-200">
-                <div class="font-semibold text-slate-600 mb-1">Different colour results recorded (check contamination or misread):</div>
+                <div class="font-semibold text-slate-600 mb-1">Different colour results recorded:</div>
                 ${lines}
               </div>
             </div>
           `;
         }
 
-        // Self-contradiction
         const scLines = a.selfContradictions.map(sc =>
           `<div>• <b>${escHtml(getDisplayGroupName(sc.groupId))}</b>: ${colorArrowText(sc.item)} → concluded ${conclusionBadgeHtml(sc.item.conclusion)}</div>`
         ).join("");
@@ -2551,7 +2664,6 @@
     function openProjectionComparison(alertIdx) {
       const a = (window.__latestAlerts || [])[alertIdx];
       if (!a) return;
-
       const title = document.getElementById("projModalTitle");
       const body = document.getElementById("projModalBody");
 
@@ -2559,9 +2671,7 @@
         const [r, b] = a.colorKey.split("|");
         title.textContent = `Solution ${a.sample}: Same Observation (${colorArrowText({ redLitmus: r, blueLitmus: b })}), Different Conclusions!`;
         body.innerHTML = `
-          <p class="text-sm text-slate-600">
-            Let's examine two teams who saw the <b>exact same colour result</b> on Solution ${a.sample}, yet reached different conclusions. Which logic is stronger? / 以下小組觀察到完全相同的顏色變化，但結論不同——你認同哪一邊的推論？
-          </p>
+          <p class="text-sm text-slate-600">以下小組觀察到完全相同的顏色變化，但結論不同——哪一邊的推論更合理？</p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             ${a.entries.map((e, i) => `
               <div class="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 space-y-2.5">
@@ -2574,7 +2684,7 @@
                 </div>
                 <div class="text-sm text-slate-800 bg-white rounded-xl p-3 border border-slate-200">
                   <div class="text-[11px] font-bold text-sky-700 uppercase mb-1">Reasoning / 推論：</div>
-                  "${escHtml(e.reasoning)}"
+                  "${escHtml(e.reasoning || "(No written reasoning yet)")}"
                 </div>
               </div>
             `).join("")}
@@ -2584,9 +2694,7 @@
         title.textContent = `Solution ${a.sample}: Experimental Discrepancy Across Class`;
         const allEntries = Object.values(a.byColorPair).flat();
         body.innerHTML = `
-          <p class="text-sm text-slate-600">
-            Different teams observed different litmus colour changes for Solution ${a.sample}. What lab error could cause this, and how should we verify? / 不同組別測出不同變色現象，可能是什麼實驗誤差導致？應如何複測？
-          </p>
+          <p class="text-sm text-slate-600">不同組別測出不同變色現象，可能是什麼實驗誤差導致？應如何複測？</p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             ${allEntries.map((e, i) => `
               <div class="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-4 space-y-2">
@@ -2597,7 +2705,7 @@
                 <div class="text-sm font-bold text-slate-800 bg-white rounded-xl p-2.5 border border-amber-200">
                   Observed: ${colorArrowText(e.item)}
                 </div>
-                <p class="text-xs text-slate-700">"${escHtml(e.reasoning)}"</p>
+                <p class="text-xs text-slate-700">"${escHtml(e.reasoning || "(No written reasoning yet)")}"</p>
               </div>
             `).join("")}
           </div>
@@ -2611,7 +2719,7 @@
 
     function renderTeacherMatrix() {
       const tbody = document.getElementById("teacherMatrixBody");
-      const groupsObj = classData.groups || {};
+      const groupsObj = getClassData(teacherClass).groups;
 
       tbody.innerHTML = ALL_GROUPS.map(gName => {
         const g = groupsObj[gName];
@@ -2638,30 +2746,42 @@
           `;
         }).join("");
 
+        const stageBadge = g.v2
+          ? (g.v2.mode === "confirm"
+              ? '<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px]">✅ Confirmed</span>'
+              : '<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[9px]">🌱 v2 Revised</span>')
+          : '<span class="ml-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px]">v1</span>';
+
+        const socBadge = g.socraticAnswer
+          ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${g.socraticAnswer==='B' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">Think Deeper: ${escHtml(g.socraticAnswer)} ${g.socraticAnswer==='B' ? '✓' : '✗'}</span>`
+          : "";
+
         return `
-          <tr class="hover:bg-slate-50">
+          <tr class="hover:bg-slate-50 align-top">
             <td class="p-2.5 font-bold text-slate-800 whitespace-nowrap">
-              ${escHtml(label)}
-              ${g.v2 ? '<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px]">v2</span>' : '<span class="ml-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px]">v1</span>'}
+              ${escHtml(label)} ${stageBadge}
               <div class="text-[10px] font-normal text-slate-400">Nos: ${escHtml((g.members || []).join(", "))}</div>
             </td>
             ${cells}
-            <td class="p-2.5 text-[11px] text-slate-600 max-w-xs">${escHtml(active.reasoning)}</td>
+            <td class="p-2.5 text-[11px] text-slate-700 max-w-sm">
+              <div>${(active.reasoning || "").trim() ? escHtml(active.reasoning) : '<span class="italic text-slate-400">(Pending conclusion / 尚未寫結論)</span>'}</div>
+              ${socBadge}
+            </td>
           </tr>
         `;
       }).join("");
     }
 
     // =========================================================
-    // TEACHER TAB 2: VISIBLE GROWTH TRACKER
+    // TEACHER TAB 2: STEP 3 CONFIRMATION & GROWTH TRACKER
     // =========================================================
     function renderTeacherGrowthTracker() {
       const grid = document.getElementById("teacherGrowthGrid");
-      const groupsObj = classData.groups || {};
+      const groupsObj = getClassData(teacherClass).groups;
       const submitted = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1);
 
       if (submitted.length === 0) {
-        grid.innerHTML = `<div class="col-span-2 text-sm text-slate-400 italic p-4">No group submissions yet.</div>`;
+        grid.innerHTML = `<div class="col-span-2 text-sm text-slate-400 italic p-4">No group submissions yet in ${escHtml(teacherClass)}.</div>`;
         return;
       }
 
@@ -2675,38 +2795,43 @@
                 <span class="font-bold text-sm text-slate-800">${escHtml(label)}</span>
                 <span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold">Pending Step 3</span>
               </div>
-              <p class="text-xs text-slate-500">v1 submitted; awaiting peer reflection &amp; v2 confirmation.</p>
+              <p class="text-xs text-slate-500">Step 1 submitted; awaiting confirmation or revision in Step 3.</p>
             </div>
           `;
         }
 
+        const isConfirm = g.v2.mode === "confirm";
         const changed = SAMPLES.filter(s => g.v1.samples[s].conclusion !== g.v2.samples[s].conclusion);
-        const tagLabels = (g.v2.mistakeTags || []).map(id => (MISTAKE_TAGS.find(m => m.id === id) || { label: id }).label);
+        const tagLabels = (g.v2.mistakeTags || []).map(id => {
+          if (id === "confirmed_correct") return "✅ 已確認實驗正確";
+          if (id === "revised_conclusion") return "✍️ 完善推論";
+          return (MISTAKE_TAGS.find(m => m.id === id) || { label: id }).label;
+        });
 
         return `
-          <div class="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-4 space-y-2">
+          <div class="rounded-xl border-2 ${isConfirm ? 'border-emerald-200 bg-emerald-50/40' : 'border-sky-200 bg-sky-50/40'} p-4 space-y-2">
             <div class="flex items-center justify-between">
-              <span class="font-extrabold text-sm text-emerald-950">${escHtml(label)}</span>
-              <span class="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
-                ${changed.length > 0 ? `Revised ${changed.join(", ")}` : "Verified v1 → v2"}
+              <span class="font-extrabold text-sm text-slate-900">${escHtml(label)}</span>
+              <span class="px-2 py-0.5 rounded-full ${isConfirm ? 'bg-emerald-600' : 'bg-sky-600'} text-white text-[10px] font-bold">
+                ${isConfirm ? "✅ Confirmed Correct" : (changed.length > 0 ? `🔄 Revised ${changed.join(", ")}` : "✍️ Refined Conclusion")}
               </span>
             </div>
             <div class="flex flex-wrap gap-1">
-              ${tagLabels.map(t => `<span class="px-2 py-0.5 rounded-full bg-white border border-emerald-300 text-[10px] font-bold text-emerald-900">${escHtml(t)}</span>`).join("")}
+              ${tagLabels.map(t => `<span class="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-800">${escHtml(t)}</span>`).join("")}
             </div>
             ${changed.length > 0 ? `
-              <div class="text-xs bg-white rounded-lg p-2 border border-emerald-200 space-y-1">
+              <div class="text-xs bg-white rounded-lg p-2 border border-sky-200 space-y-1">
                 ${changed.map(s => `<div>Solution <b>${s}</b>: ${conclusionBadgeHtml(g.v1.samples[s].conclusion)} → ${conclusionBadgeHtml(g.v2.samples[s].conclusion)}</div>`).join("")}
               </div>
             ` : ""}
-            <p class="text-xs text-slate-700"><b>v2 Reasoning:</b> ${escHtml(g.v2.reasoning)}</p>
+            <p class="text-xs text-slate-700"><b>Final Conclusion:</b> ${escHtml(g.v2.reasoning)}</p>
           </div>
         `;
       }).join("");
     }
 
     // =========================================================
-    // TEACHER TAB 3: 5-MIN MC QUIZ ANALYTICS (CHART.JS)
+    // TEACHER TAB 3: QUIZ ANALYTICS
     // =========================================================
     function setQuizSort(mode) {
       quizSortBy = mode;
@@ -2714,7 +2839,7 @@
     }
 
     function renderTeacherQuizAnalytics() {
-      const list = Object.values(classData.quizzes || {});
+      const list = Object.values(getClassData(teacherClass).quizzes);
       const avgBadge = document.getElementById("quizAvgScoreBadge");
       const breakdownEl = document.getElementById("quizOptionBreakdown");
       const rosterBody = document.getElementById("quizRosterBody");
@@ -2728,11 +2853,8 @@
       const avg = list.length ? (list.reduce((acc, s) => acc + s.score, 0) / list.length).toFixed(1) : "--";
       avgBadge.textContent = `Avg: ${avg} / ${QUIZ_QUESTIONS.length} (${list.length} students)`;
 
-      // Chart.js Bar Chart
       const ctx = document.getElementById("quizAccuracyChart").getContext("2d");
-      if (quizChartInstance) {
-        quizChartInstance.destroy();
-      }
+      if (quizChartInstance) quizChartInstance.destroy();
       quizChartInstance = new Chart(ctx, {
         type: "bar",
         data: {
@@ -2747,14 +2869,11 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + "%" } }
-          },
+          scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + "%" } } },
           plugins: { legend: { display: false } }
         }
       });
 
-      // Option Distribution Breakdown
       breakdownEl.innerHTML = QUIZ_QUESTIONS.map((q, idx) => {
         const counts = { A: 0, B: 0, C: 0, D: 0 };
         list.forEach(st => {
@@ -2778,12 +2897,7 @@
         `;
       }).join("");
 
-      // Student Roster Table
-      const sorted = list.slice().sort((a, b) => {
-        if (quizSortBy === "score") return b.score - a.score;
-        return Number(a.classNo) - Number(b.classNo);
-      });
-
+      const sorted = list.slice().sort((a, b) => quizSortBy === "score" ? b.score - a.score : Number(a.classNo) - Number(b.classNo));
       rosterBody.innerHTML = sorted.length
         ? sorted.map(st => `
             <tr class="hover:bg-slate-50">
@@ -2803,8 +2917,8 @@
     // =========================================================
     // TEACHER UTILITIES: AUTO-FILL, EXPORT CSV, CLEAR CLASS
     // =========================================================
-    function autoFillMissingGroups() {
-      const groupsObj = Object.assign({}, classData.groups || {});
+    async function autoFillMissingGroups() {
+      const groupsObj = Object.assign({}, getClassData(teacherClass).groups);
       let added = 0;
 
       const templatePool = [
@@ -2816,32 +2930,38 @@
             D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
             E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
           },
-          reasoning: "[Auto-fill Demo] Tested both red and blue litmus papers cleanly; A & D are acidic, B & E are alkaline, C is neutral."
+          reasoning: "[Demo] A & D are acidic because blue litmus turned red. B & E are alkaline because red litmus turned blue. C is neutral because both remained unchanged."
+        },
+        {
+          samples: {
+            A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
+            B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
+            C: { redLitmus: "red", blueLitmus: "blue", conclusion: "acidic" }, // Same colour, different conclusion!
+            D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
+            E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
+          },
+          reasoning: "[Demo] Red litmus stayed red in Solution C, so we thought C is acidic."
         },
         {
           samples: {
             A: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
             B: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" },
             C: { redLitmus: "red", blueLitmus: "blue", conclusion: "neutral" },
-            D: { redLitmus: "red", blueLitmus: "red", conclusion: "acidic" },
-            E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "neutral" } // Intentional same-colour diff conclusion demo
+            D: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }, // Experimental discrepancy!
+            E: { redLitmus: "blue", blueLitmus: "blue", conclusion: "alkaline" }
           },
-          reasoning: "[Auto-fill Demo] Blue litmus paper remained blue in Solution E, so we thought E might be neutral."
+          reasoning: "[Demo] Red litmus turned blue in Solution D in our tray, maybe dropper contamination?"
         }
       ];
 
       ALL_GROUPS.forEach((gName, idx) => {
         if (!groupsObj[gName] || !groupsObj[gName].v1) {
           const tpl = templatePool[idx % templatePool.length];
-          const v1 = {
-            samples: JSON.parse(JSON.stringify(tpl.samples)),
-            reasoning: tpl.reasoning,
-            submittedAt: Date.now()
-          };
           groupsObj[gName] = {
             groupId: gName,
             members: ["Demo"],
-            v1,
+            socraticAnswer: idx % 2 === 0 ? "B" : "A",
+            v1: { samples: JSON.parse(JSON.stringify(tpl.samples)), reasoning: tpl.reasoning, submittedAt: Date.now() },
             v2: null,
             current: { samples: JSON.parse(JSON.stringify(tpl.samples)), reasoning: tpl.reasoning }
           };
@@ -2853,25 +2973,22 @@
         showToast("All 8 groups already have submissions!");
         return;
       }
-      writePath(teacherClass, "groups", groupsObj);
-      showToast(`✨ Auto-filled ${added} missing group(s) without overwriting existing submissions!`);
+      await writePath(teacherClass, "groups", groupsObj);
+      showToast(`✨ Auto-filled ${added} missing group(s) without overwriting real data!`);
     }
 
     function exportClassCSV() {
+      const classData = getClassData(teacherClass);
       const rows = [];
       rows.push(["=== GROUP LAB OBSERVATIONS & CONCLUSIONS ==="]);
-      rows.push(["Class", "Group", "Members", "Stage", "A_Obs", "A_Concl", "B_Obs", "B_Concl", "C_Obs", "C_Concl", "D_Obs", "D_Concl", "E_Obs", "E_Concl", "Reasoning", "v2_Reflection_Tags"]);
+      rows.push(["Class", "Group", "Members", "Step3_Status", "Socratic_Ans", "A_Obs", "A_Concl", "B_Obs", "B_Concl", "C_Obs", "C_Concl", "D_Obs", "D_Concl", "E_Obs", "E_Concl", "Final_Conclusion", "Reflection_Tags"]);
 
       ALL_GROUPS.forEach(gName => {
-        const g = classData.groups && classData.groups[gName];
+        const g = classData.groups[gName];
         if (!g || !g.v1) return;
         const active = g.current || g.v1;
-        const line = [
-          teacherClass,
-          gName,
-          (g.members || []).join(";"),
-          g.v2 ? "v2_Revised" : "v1_Initial"
-        ];
+        const status = g.v2 ? (g.v2.mode === "confirm" ? "Confirmed_Correct" : "v2_Revised") : "v1_Only";
+        const line = [teacherClass, gName, (g.members || []).join(";"), status, g.socraticAnswer || ""];
         SAMPLES.forEach(s => {
           const item = active.samples[s];
           line.push(`R->${item.redLitmus}|B->${item.blueLitmus}`);
@@ -2885,18 +3002,11 @@
       rows.push([]);
       rows.push(["=== INDIVIDUAL 5-MIN MC QUIZ SCORES ==="]);
       rows.push(["Class", "ClassNo", "Group", "Q1", "Q2", "Q3", "Q4", "Q5", "Score", "Total"]);
-      Object.values(classData.quizzes || {}).sort((a, b) => Number(a.classNo) - Number(b.classNo)).forEach(st => {
+      Object.values(classData.quizzes).sort((a, b) => Number(a.classNo) - Number(b.classNo)).forEach(st => {
         rows.push([
-          teacherClass,
-          st.classNo,
-          st.groupId,
-          st.answers.q1 || "",
-          st.answers.q2 || "",
-          st.answers.q3 || "",
-          st.answers.q4 || "",
-          st.answers.q5 || "",
-          st.score,
-          st.total
+          teacherClass, st.classNo, st.groupId,
+          st.answers.q1 || "", st.answers.q2 || "", st.answers.q3 || "", st.answers.q4 || "", st.answers.q5 || "",
+          st.score, st.total
         ]);
       });
 
@@ -2913,28 +3023,23 @@
       showToast("📥 CSV exported successfully!");
     }
 
-    function clearClassData() {
+    async function clearClassData() {
       if (!confirm(`⚠️ Clear ALL lab records, peer reviews, and quiz scores for Class ${teacherClass}?\n確定要清空 ${teacherClass} 本班所有實驗與小測數據？`)) return;
-      if (!confirm(`Final Confirmation: This cannot be undone! Type OK / 最後確認：清空後無法復原，確定繼續？`)) return;
+      if (!confirm(`Final Confirmation: This cannot be undone! / 最後確認：清空後無法復原，確定繼續？`)) return;
 
-      const emptyState = {
-        groups: {},
-        peerReviews: {},
-        quizzes: {},
-        control: { peerWallUnlocked: true, quizUnlocked: false, anonymousMode: false, focusPrompt: "" }
-      };
-
-      if (isDemoMode) {
-        saveDemoClass(teacherClass, emptyState);
-        classData = emptyState;
-        onClassDataUpdated();
+      const emptyState = defaultClassState();
+      if (syncMode === "cloud" && db) {
+        await db.ref(`lessons/${LESSON_ID}/${teacherClass}`).set(emptyState);
       } else {
-        db.ref(`lessons/${LESSON_ID}/${teacherClass}`).set(emptyState);
+        const store = loadLocalStore();
+        store[teacherClass] = emptyState;
+        saveLocalStore(store);
+        allLessonsData = store;
+        onDataUpdated();
       }
       showToast(`🗑️ Cleared all data for Class ${teacherClass}.`);
     }
 
-    // Boot App
     window.addEventListener("DOMContentLoaded", initApp);
   </script>
 </body>
