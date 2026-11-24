@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>F.2 Science | Acid & Alkali Unknown Solutions A–E Interactive Lab (v2)</title>
+  <title>F.2 Science | Acid & Alkali Unknown Solutions A–E Interactive Lab (v3)</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
@@ -119,7 +119,7 @@
         <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200 font-semibold">🎯 刻意練習 5-Min Mastery Quiz</span>
       </div>
       <div id="classProgressMini" class="text-slate-500 font-semibold">
-        全班進度 / Class Progress: <span id="miniSubmittedCount" class="text-sky-700 font-bold">0/8</span> Groups
+        全班進度 / Class Progress: <span id="miniSubmittedCount" class="text-sky-700 font-bold">0/9</span> Groups
       </div>
     </div>
   </div>
@@ -547,7 +547,7 @@
         <!-- Live Counters -->
         <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
           <span class="px-3 py-1.5 rounded-xl bg-sky-50 text-sky-800 border border-sky-200">
-            Lab Submitted: <span id="tStatSubmitted">0/8</span>
+            Lab Submitted: <span id="tStatSubmitted">0/9</span>
           </span>
           <span class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
             Step 3 Done: <span id="tStatRevised">0</span>
@@ -561,6 +561,21 @@
       <!-- Classroom Pacing Controls & Utilities -->
       <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
         <div class="flex flex-wrap items-center gap-2">
+          <div class="touch-btn flex items-center gap-1.5 bg-sky-50 border border-sky-300 rounded-xl px-2.5 py-1 text-xs font-bold text-sky-950">
+            <span>👥 本班組數 (<span id="tGroupCountClassLabel">2A</span>):</span>
+            <select id="teacherGroupCountSelect" onchange="updateClassGroupCount(this.value)"
+              class="bg-white border border-sky-300 rounded-lg px-2 py-1 text-xs font-extrabold text-sky-900">
+              <option value="4">4 組</option>
+              <option value="5">5 組</option>
+              <option value="6">6 組</option>
+              <option value="7">7 組</option>
+              <option value="8">8 組</option>
+              <option value="9" selected>9 組 (預設)</option>
+              <option value="10">10 組</option>
+              <option value="11">11 組</option>
+              <option value="12">12 組</option>
+            </select>
+          </div>
           <button id="btnTogglePeerWall" onclick="toggleControl('peerWallUnlocked')" class="touch-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition">
             🔓 Peer Wall: OPEN
           </button>
@@ -751,7 +766,7 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Class / 班別</label>
-          <select id="loginClass" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold">
+          <select id="loginClass" onchange="populateLoginGroups(this.value)" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold">
             <option value="2A">2A</option>
             <option value="2B">2B</option>
             <option value="2C">2C</option>
@@ -761,16 +776,11 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Group / 組別</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Group / 組別 <span id="loginGroupCountHint" class="text-sky-700 font-normal">(本班共 9 組)</span>
+          </label>
           <select id="loginGroup" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold">
             <option value="Group 1">Group 1 (第 1 組)</option>
-            <option value="Group 2">Group 2 (第 2 組)</option>
-            <option value="Group 3">Group 3 (第 3 組)</option>
-            <option value="Group 4">Group 4 (第 4 組)</option>
-            <option value="Group 5">Group 5 (第 5 組)</option>
-            <option value="Group 6">Group 6 (第 6 組)</option>
-            <option value="Group 7">Group 7 (第 7 組)</option>
-            <option value="Group 8">Group 8 (第 8 組)</option>
           </select>
         </div>
 
@@ -912,8 +922,12 @@
     const TEACHER_PWD = "swcsciteacher";
     const CLASSES = ["2A", "2B", "2C", "2D", "2E"];
     const SAMPLES = ["A", "B", "C", "D", "E"];
-    const ALL_GROUPS = ["Group 1", "Group 2", "Group 3", "Group 4", "Group 5", "Group 6", "Group 7", "Group 8"];
-    const ANON_LABELS = ["Team Alpha", "Team Beta", "Team Gamma", "Team Delta", "Team Epsilon", "Team Zeta", "Team Eta", "Team Theta"];
+    const DEFAULT_GROUP_COUNT = 9;
+    const ANON_LABELS = [
+      "Team Alpha", "Team Beta", "Team Gamma", "Team Delta",
+      "Team Epsilon", "Team Zeta", "Team Eta", "Team Theta",
+      "Team Iota", "Team Kappa", "Team Lambda", "Team Mu"
+    ];
 
     // =========================================================
     // CURRICULUM & SCAFFOLDING DATA
@@ -1108,7 +1122,7 @@
     // All classes data store: allLessonsData[cls] = { groups, peerReviews, quizzes, control }
     let allLessonsData = {};
 
-    function defaultClassState() {
+    function defaultClassState(groupCount = DEFAULT_GROUP_COUNT) {
       return {
         groups: {},
         peerReviews: {},
@@ -1117,7 +1131,8 @@
           peerWallUnlocked: true,
           quizUnlocked: false,
           anonymousMode: false,
-          focusPrompt: ""
+          focusPrompt: "",
+          groupCount: groupCount
         }
       };
     }
@@ -1133,10 +1148,26 @@
         peerReviews: raw.peerReviews || {},
         quizzes: raw.quizzes || {},
         control: Object.assign(
-          { peerWallUnlocked: true, quizUnlocked: false, anonymousMode: false, focusPrompt: "" },
+          { peerWallUnlocked: true, quizUnlocked: false, anonymousMode: false, focusPrompt: "", groupCount: DEFAULT_GROUP_COUNT },
           raw.control || {}
         )
       };
+    }
+
+    function getClassGroupCount(cls) {
+      const n = Number(getClassData(cls).control.groupCount);
+      return (Number.isInteger(n) && n >= 1 && n <= 12) ? n : DEFAULT_GROUP_COUNT;
+    }
+
+    function getGroupsForClass(cls) {
+      const count = getClassGroupCount(cls);
+      return Array.from({ length: count }, (_, i) => `Group ${i + 1}`);
+    }
+
+    function getAnonLabelForGroup(gName) {
+      const m = String(gName || "").match(/(\d+)/);
+      const idx = m ? parseInt(m[1], 10) - 1 : -1;
+      return (idx >= 0 && ANON_LABELS[idx]) ? ANON_LABELS[idx] : gName;
     }
 
     function createEmptySamples() {
@@ -1444,9 +1475,18 @@
       const activeCls = getActiveClassName();
       const classData = getClassData(activeCls);
 
-      // Mini progress counter
-      const subCount = Object.keys(classData.groups).filter(g => classData.groups[g]?.v1).length;
-      document.getElementById("miniSubmittedCount").textContent = `${subCount}/8`;
+      // Mini progress counter (dynamic per-class group count!)
+      const activeGroups = getGroupsForClass(activeCls);
+      const subCount = activeGroups.filter(g => classData.groups[g]?.v1).length;
+      document.getElementById("miniSubmittedCount").textContent = `${subCount}/${activeGroups.length}`;
+
+      // If login modal is open, keep its group options synced with Firebase groupCount
+      const loginModal = document.getElementById("loginModal");
+      if (loginModal && !loginModal.classList.contains("hidden")) {
+        const selCls = document.getElementById("loginClass").value;
+        const selGrp = document.getElementById("loginGroup").value;
+        populateLoginGroups(selCls, selGrp);
+      }
 
       // Focus Prompt Banner
       const fp = (classData.control.focusPrompt || "").trim();
@@ -1471,9 +1511,22 @@
     // =========================================================
     // STUDENT LOGIN
     // =========================================================
+    function populateLoginGroups(cls, preferredGroup) {
+      const groupList = getGroupsForClass(cls);
+      const select = document.getElementById("loginGroup");
+      const prev = preferredGroup || select.value || "Group 1";
+      select.innerHTML = groupList.map((gName, idx) =>
+        `<option value="${gName}">${gName} (第 ${idx + 1} 組)</option>`
+      ).join("");
+      select.value = groupList.includes(prev) ? prev : groupList[0];
+      const hint = document.getElementById("loginGroupCountHint");
+      if (hint) hint.textContent = `(本班共 ${groupList.length} 組)`;
+    }
+
     function openLoginModal() {
-      document.getElementById("loginClass").value = student.className || "2A";
-      document.getElementById("loginGroup").value = student.groupId || "Group 1";
+      const cls = student.className || "2A";
+      document.getElementById("loginClass").value = cls;
+      populateLoginGroups(cls, student.groupId || "Group 1");
       document.getElementById("loginClassNo").value = student.classNo || "";
       document.getElementById("loginError").classList.add("hidden");
       const m = document.getElementById("loginModal");
@@ -1867,10 +1920,11 @@
       const likerKey = `${student.groupId}_${student.classNo}`;
       const isAnon = classData.control.anonymousMode;
 
-      grid.innerHTML = ALL_GROUPS.map((gName, idx) => {
+      const classGroups = getGroupsForClass(student.className);
+      grid.innerHTML = classGroups.map((gName, idx) => {
         const g = groupsObj[gName];
         const isOwn = gName === student.groupId;
-        const displayName = isAnon && !isOwn ? ANON_LABELS[idx] : gName;
+        const displayName = isAnon && !isOwn ? getAnonLabelForGroup(gName) : gName;
 
         if (!g || !g.v1) {
           return `
@@ -2429,6 +2483,15 @@
       writePath(teacherClass, `control/${key}`, !cur);
     }
 
+    async function updateClassGroupCount(val) {
+      const n = parseInt(val, 10);
+      if (isNaN(n) || n < 1 || n > 12) return;
+      const ok = await writePath(teacherClass, "control/groupCount", n);
+      if (ok) {
+        showToast(`✅ 已設定 ${teacherClass} 班組數為 ${n} 組 / Set Class ${teacherClass} to ${n} groups.`);
+      }
+    }
+
     function pushFocusPrompt() {
       const txt = document.getElementById("teacherFocusInput").value.trim();
       writePath(teacherClass, "control/focusPrompt", txt);
@@ -2462,12 +2525,13 @@
       const container = document.getElementById("teacherClassPills");
       container.innerHTML = CLASSES.map(c => {
         const cd = getClassData(c);
-        const cnt = Object.keys(cd.groups).filter(g => cd.groups[g]?.v1).length;
+        const cGroups = getGroupsForClass(c);
+        const cnt = cGroups.filter(g => cd.groups[g]?.v1).length;
         const active = c === teacherClass;
         return `
           <button type="button" onclick="changeTeacherClass('${c}')"
             class="px-3 py-1.5 rounded-xl text-xs font-bold border transition ${active ? 'bg-sky-800 text-white border-sky-900 shadow-sm' : (cnt > 0 ? 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200')}">
-            ${c} <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] ${active ? 'bg-white/20 text-white' : (cnt > 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-600')}">${cnt}</span>
+            ${c} <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] ${active ? 'bg-white/20 text-white' : (cnt > 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-600')}">${cnt}/${cGroups.length}</span>
           </button>
         `;
       }).join("");
@@ -2480,14 +2544,17 @@
       const quizzesObj = classData.quizzes;
       const ctrl = classData.control;
 
-      const submittedGroups = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1);
-      const step3Groups = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v2);
+      const classGroups = getGroupsForClass(teacherClass);
+      const submittedGroups = classGroups.filter(g => groupsObj[g] && groupsObj[g].v1);
+      const step3Groups = classGroups.filter(g => groupsObj[g] && groupsObj[g].v2);
       const quizList = Object.values(quizzesObj);
 
-      document.getElementById("tStatSubmitted").textContent = `${submittedGroups.length}/8`;
+      document.getElementById("tStatSubmitted").textContent = `${submittedGroups.length}/${classGroups.length}`;
       document.getElementById("tStatRevised").textContent = `${step3Groups.length}`;
       document.getElementById("tStatQuiz").textContent = `${quizList.length}`;
-      document.getElementById("teacherActiveClassTag").textContent = `Viewing: ${teacherClass}`;
+      document.getElementById("teacherActiveClassTag").textContent = `Viewing: ${teacherClass} (${classGroups.length} Groups)`;
+      document.getElementById("tGroupCountClassLabel").textContent = teacherClass;
+      document.getElementById("teacherGroupCountSelect").value = String(classGroups.length);
       document.getElementById("teacherFocusInput").value = ctrl.focusPrompt || "";
 
       styleToggleBtn("btnTogglePeerWall", ctrl.peerWallUnlocked !== false, "🔓 Peer Wall: OPEN", "🔒 Peer Wall: LOCKED");
@@ -2516,7 +2583,8 @@
     // =========================================================
     function analyzeConflicts() {
       const groupsObj = getClassData(teacherClass).groups;
-      const submitted = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1);
+      const classGroups = getGroupsForClass(teacherClass);
+      const submitted = classGroups.filter(g => groupsObj[g] && groupsObj[g].v1);
       const alerts = [];
 
       SAMPLES.forEach(s => {
@@ -2560,14 +2628,14 @@
     function getDisplayGroupName(gName) {
       const isAnon = getClassData(teacherClass).control.anonymousMode;
       if (!isAnon) return gName;
-      const idx = ALL_GROUPS.indexOf(gName);
-      return idx >= 0 ? ANON_LABELS[idx] : gName;
+      return getAnonLabelForGroup(gName);
     }
 
     function renderSmartConflictDetector() {
       const container = document.getElementById("conflictAlertsContainer");
       const groupsObj = getClassData(teacherClass).groups;
-      const submittedCount = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1).length;
+      const classGroups = getGroupsForClass(teacherClass);
+      const submittedCount = classGroups.filter(g => groupsObj[g] && groupsObj[g].v1).length;
       const alerts = analyzeConflicts();
       window.__latestAlerts = alerts;
 
@@ -2676,7 +2744,7 @@
             ${a.entries.map((e, i) => `
               <div class="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 space-y-2.5">
                 <div class="flex items-center justify-between">
-                  <span class="font-extrabold text-base text-slate-900">${escHtml(ANON_LABELS[ALL_GROUPS.indexOf(e.groupId)] || ("Team " + (i+1)))}</span>
+                  <span class="font-extrabold text-base text-slate-900">${escHtml(getAnonLabelForGroup(e.groupId))}</span>
                   ${conclusionBadgeHtml(e.conclusion)}
                 </div>
                 <div class="text-sm font-bold text-slate-700 bg-white rounded-xl p-2.5 border border-slate-200">
@@ -2699,7 +2767,7 @@
             ${allEntries.map((e, i) => `
               <div class="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-4 space-y-2">
                 <div class="flex items-center justify-between">
-                  <span class="font-extrabold text-base text-slate-900">${escHtml(ANON_LABELS[ALL_GROUPS.indexOf(e.groupId)] || ("Team " + (i+1)))}</span>
+                  <span class="font-extrabold text-base text-slate-900">${escHtml(getAnonLabelForGroup(e.groupId))}</span>
                   ${conclusionBadgeHtml(e.conclusion)}
                 </div>
                 <div class="text-sm font-bold text-slate-800 bg-white rounded-xl p-2.5 border border-amber-200">
@@ -2720,8 +2788,9 @@
     function renderTeacherMatrix() {
       const tbody = document.getElementById("teacherMatrixBody");
       const groupsObj = getClassData(teacherClass).groups;
+      const classGroups = getGroupsForClass(teacherClass);
 
-      tbody.innerHTML = ALL_GROUPS.map(gName => {
+      tbody.innerHTML = classGroups.map(gName => {
         const g = groupsObj[gName];
         const label = getDisplayGroupName(gName);
         if (!g || !g.v1) {
@@ -2778,7 +2847,8 @@
     function renderTeacherGrowthTracker() {
       const grid = document.getElementById("teacherGrowthGrid");
       const groupsObj = getClassData(teacherClass).groups;
-      const submitted = ALL_GROUPS.filter(g => groupsObj[g] && groupsObj[g].v1);
+      const classGroups = getGroupsForClass(teacherClass);
+      const submitted = classGroups.filter(g => groupsObj[g] && groupsObj[g].v1);
 
       if (submitted.length === 0) {
         grid.innerHTML = `<div class="col-span-2 text-sm text-slate-400 italic p-4">No group submissions yet in ${escHtml(teacherClass)}.</div>`;
@@ -2954,7 +3024,8 @@
         }
       ];
 
-      ALL_GROUPS.forEach((gName, idx) => {
+      const classGroups = getGroupsForClass(teacherClass);
+      classGroups.forEach((gName, idx) => {
         if (!groupsObj[gName] || !groupsObj[gName].v1) {
           const tpl = templatePool[idx % templatePool.length];
           groupsObj[gName] = {
@@ -2970,7 +3041,7 @@
       });
 
       if (added === 0) {
-        showToast("All 8 groups already have submissions!");
+        showToast(`All ${classGroups.length} groups already have submissions!`);
         return;
       }
       await writePath(teacherClass, "groups", groupsObj);
@@ -2983,7 +3054,7 @@
       rows.push(["=== GROUP LAB OBSERVATIONS & CONCLUSIONS ==="]);
       rows.push(["Class", "Group", "Members", "Step3_Status", "Socratic_Ans", "A_Obs", "A_Concl", "B_Obs", "B_Concl", "C_Obs", "C_Concl", "D_Obs", "D_Concl", "E_Obs", "E_Concl", "Final_Conclusion", "Reflection_Tags"]);
 
-      ALL_GROUPS.forEach(gName => {
+      getGroupsForClass(teacherClass).forEach(gName => {
         const g = classData.groups[gName];
         if (!g || !g.v1) return;
         const active = g.current || g.v1;
@@ -3027,7 +3098,8 @@
       if (!confirm(`⚠️ Clear ALL lab records, peer reviews, and quiz scores for Class ${teacherClass}?\n確定要清空 ${teacherClass} 本班所有實驗與小測數據？`)) return;
       if (!confirm(`Final Confirmation: This cannot be undone! / 最後確認：清空後無法復原，確定繼續？`)) return;
 
-      const emptyState = defaultClassState();
+      const keptGroupCount = getClassGroupCount(teacherClass);
+      const emptyState = defaultClassState(keptGroupCount);
       if (syncMode === "cloud" && db) {
         await db.ref(`lessons/${LESSON_ID}/${teacherClass}`).set(emptyState);
       } else {
